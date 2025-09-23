@@ -37,7 +37,7 @@ class Concept(BaseModel):
 
     id: str
     preferred_label: InternationalizedStr = Field(..., alias="prefLabel")
-    narrower: list[Concept]
+    narrower: list[Concept] = Field(default_factory=list)
 
 
 class KOS(BaseModel):
@@ -70,7 +70,7 @@ class ProcessedConcept(BaseModel):
 
     reference: Reference
     label: InternationalizedStr
-    narrower: list[ProcessedConcept]
+    narrower: list[ProcessedConcept] = Field(default_factory=list)
 
 
 class ProcessedKOS(BaseModel):
@@ -80,7 +80,7 @@ class ProcessedKOS(BaseModel):
     type: str
     title: InternationalizedStr
     description: InternationalizedStr
-    concepts: list[ProcessedConcept]
+    concepts: list[ProcessedConcept] = Field(default_factory=list)
 
 
 def process(kos: KOS, converter: Converter) -> ProcessedKOS:
