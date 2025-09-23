@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from curies import Converter
+from curies import Converter, Reference
 from pydantic import BaseModel, Field
 
 __all__ = [
@@ -68,7 +68,7 @@ def _process(res_json: dict[str, Any]) -> KOS:
 class ProcessedConcept(BaseModel):
     """A processed JSKOS concept."""
 
-    id: str
+    reference: Reference
     label: InternationalizedStr
     narrower: list[ProcessedConcept]
 
@@ -95,4 +95,8 @@ def process(kos: KOS, converter: Converter) -> ProcessedKOS:
 
 
 def _process_concept(concept: Concept, converter: Converter) -> ProcessedConcept:
-    raise NotImplementedError
+    return ProcessedConcept(
+        reference=converter.parse_uri(concept.id, strict=True).to_pydantic(),
+        label=concept.preferred_label,
+        narrower=[_process_concept(n, converter) for n in concept.narrower],
+    )
