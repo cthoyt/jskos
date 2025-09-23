@@ -34,10 +34,9 @@
 </p>
 
 [JSKOS](https://gbv.github.io/jskos/) is a JSON-based format for defining
-_knowledge organization systems_. This package provides a Pydantic-based
-wrapper and I/O functions for raw JSKOS as well as a processed model
-that uses [`curies`](https://github.com/biopragmatics/curies) to make
-it semantics-aware.
+_knowledge organization systems_. This package provides a Pydantic-based wrapper
+and I/O functions for raw JSKOS as well as a processed model that uses
+[`curies`](https://github.com/biopragmatics/curies) to make it semantics-aware.
 
 ## 💪 Getting Started
 
