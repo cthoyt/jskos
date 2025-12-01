@@ -205,9 +205,9 @@ class ProcessedConcept(BaseModel):
 
     references: list[Reference] | None = None
     label: LanguageMap
-    narrower: list[ProcessedConcept] = Field(default_factory=list)
-    broader: list[ProcessedConcept] = Field(default_factory=list)
-    related: list[ProcessedConcept] = Field(default_factory=list)
+    narrower: list[ProcessedConcept] | None = Field(None)
+    broader: list[ProcessedConcept] | None = Field(None)
+    related: list[ProcessedConcept] | None = Field(None)
 
 
 class ProcessedKOS(BaseModel):
