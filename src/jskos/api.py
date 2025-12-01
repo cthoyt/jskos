@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 
+import datetime
+import json
 from pathlib import Path
 from typing import Any
 
 import requests
-from curies import Converter, Reference
-from pydantic import BaseModel, Field
+from curies import Converter, Reference, SemanticallyProcessable
+from pydantic import AnyUrl, BaseModel, Field
 
 __all__ = [
     "KOS",
     "Concept",
-    "InternationalizedStr",
     "LanguageCode",
+    "LanguageMap",
+    "Mapping",
     "ProcessedConcept",
     "ProcessedKOS",
-    "process",
     "read",
 ]
 
@@ -27,27 +29,153 @@ type TimeoutHint = int | float | None | tuple[float | int, float | int]
 type LanguageCode = str
 
 #: A dictionary from two-letter language codes to values in multiple languages
-type InternationalizedStr = dict[LanguageCode, str]
+type LanguageMap = dict[LanguageCode, str]
+
+type LanguageMapOfList = dict[LanguageCode, list[str]]
 
 _PROTOCOLS: set[str] = {"http", "https"}
 
 
-class Concept(BaseModel):
+class Resource(BaseModel):
+    """A resource, based on https://gbv.github.io/jskos/#resource."""
+
+    uri: AnyUrl | None = None
+    identifier: list[AnyUrl] | None = None
+    type: list[AnyUrl] | None = None
+    created: datetime.date | None = None
+    issued: datetime.date | None = None
+    modified: datetime.date | None = None
+
+    # creator
+    # contributor
+    # source
+    # publisher
+    # partOf
+    # annotations
+    # qualifiedRelations
+    # qualifiedDates
+    # qualifiedLiterals
+    # rank
+
+
+class Item(Resource):
+    """An item, defined in https://gbv.github.io/jskos/#item."""
+
+    url: AnyUrl | None = None
+    # notation
+    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
+    alternative_label: LanguageMapOfList | None = Field(None, alias="altLabel")
+    hidden_label: LanguageMapOfList | None = Field(None, alias="hiddenLabel")
+    scope_note: LanguageMapOfList | None = Field(None, alias="scopeNote")
+    definition: LanguageMapOfList | None = Field(None)
+    example: LanguageMapOfList | None = Field(None)
+    # historyNote
+    # editorialNote
+    # changeNote
+    # note
+    # startDate
+    # endDate
+    # relatedDate
+    # relatedDates
+    # startPlace
+    # endPlace
+    # place
+    # location
+    # address
+    # replacedBy
+    # basedOn
+    # subject
+    # subjectOf
+    # depiction
+    # media
+    # tool
+    # issue
+    # issueTracker
+    # guidelines
+    # version
+    # versionOf
+
+
+class Mapping(Item):
+    """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
+
+    from_: ConceptBundle = Field(..., alias="from")
+    to: ConceptBundle = Field(...)
+    from_scheme: ConceptScheme | None = Field(None)
+    to_scheme: ConceptScheme | None = Field(None)
+    mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
+    justification: AnyUrl | None = None
+
+
+class ConceptScheme(Item):
+    """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
+
+
+class ConceptBundle(BaseModel):
+    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
+
+    member_set: list[Concept] | None = Field(None, alias="memberSet")
+    member_list: list[Concept] | None = Field(None, alias="memberList")
+    member_choice: list[Concept] | None = Field(None, alias="memberChoice")
+    # member_roles
+
+
+class Concept(Item, ConceptBundle):
     """Represents a concept in JSKOS."""
 
-    id: str
-    preferred_label: InternationalizedStr = Field(..., alias="prefLabel")
-    narrower: list[Concept] = Field(default_factory=list)
+    narrower: list[Concept] | None = Field(None)
+    broader: list[Concept] | None = Field(None)
+    related: list[Concept] | None = Field(None)
+    # previous
+    # next
+    # ancestors
+    # inScheme
+    # topConceptOf
+    mappings: list[Mapping] | None = Field(None)
+    # occurrences
+    deprecated: bool | None = None
+
+    def process(self, converter: Converter) -> ProcessedConcept:
+        """Process the concept."""
+        return ProcessedConcept(
+            references=[
+                converter.parse_uri(str(uri), strict=True).to_pydantic() for uri in self.identifier
+            ]
+            if self.identifier is not None
+            else None,
+            label=self.preferred_label,
+            narrower=[n.process(converter) for n in self.narrower]
+            if self.narrower is not None
+            else None,
+            broader=[n.process(converter) for n in self.broader]
+            if self.broader is not None
+            else None,
+            related=[n.process(converter) for n in self.related]
+            if self.related is not None
+            else None,
+        )
 
 
-class KOS(BaseModel):
+class KOS(BaseModel, SemanticallyProcessable["ProcessedKOS"]):
     """A wrapper around a knowledge organization system (KOS)."""
 
     id: str
     type: str
-    title: InternationalizedStr
-    description: InternationalizedStr
-    has_top_concept: list[Concept] = Field(..., alias="hasTopConcept")
+    title: LanguageMap
+    description: LanguageMap
+    has_top_concept: list[Concept] | None = Field(None, alias="hasTopConcept")
+
+    def process(self, converter: Converter) -> ProcessedKOS:
+        """Process a KOS."""
+        return ProcessedKOS(
+            id=self.id,
+            type=self.type,
+            title=self.title,
+            description=self.description,
+            concepts=[concept.process(converter) for concept in self.has_top_concept]
+            if self.has_top_concept
+            else None,
+        )
 
 
 def read(path: str | Path, *, timeout: TimeoutHint = None) -> KOS:
@@ -56,7 +184,8 @@ def read(path: str | Path, *, timeout: TimeoutHint = None) -> KOS:
         res = requests.get(path, timeout=timeout or 5)
         res.raise_for_status()
         return _process(res.json())
-    raise NotImplementedError
+    with open(path) as file:
+        return _process(json.load(file))
 
 
 def _process(res_json: dict[str, Any]) -> KOS:
@@ -68,9 +197,13 @@ def _process(res_json: dict[str, Any]) -> KOS:
 class ProcessedConcept(BaseModel):
     """A processed JSKOS concept."""
 
-    reference: Reference
-    label: InternationalizedStr
+    # see https://gbv.github.io/jskos/#concept
+
+    references: list[Reference] | None = None
+    label: LanguageMap
     narrower: list[ProcessedConcept] = Field(default_factory=list)
+    broader: list[ProcessedConcept] = Field(default_factory=list)
+    related: list[ProcessedConcept] = Field(default_factory=list)
 
 
 class ProcessedKOS(BaseModel):
@@ -78,25 +211,9 @@ class ProcessedKOS(BaseModel):
 
     id: str
     type: str
-    title: InternationalizedStr
-    description: InternationalizedStr
+    title: LanguageMap
+    description: LanguageMap
     concepts: list[ProcessedConcept] = Field(default_factory=list)
 
 
-def process(kos: KOS, converter: Converter) -> ProcessedKOS:
-    """Process a KOS."""
-    return ProcessedKOS(
-        id=kos.id,
-        type=kos.type,
-        title=kos.title,
-        description=kos.description,
-        concepts=[_process_concept(concept, converter) for concept in kos.has_top_concept],
-    )
-
-
-def _process_concept(concept: Concept, converter: Converter) -> ProcessedConcept:
-    return ProcessedConcept(
-        reference=converter.parse_uri(concept.id, strict=True).to_pydantic(),
-        label=concept.preferred_label,
-        narrower=[_process_concept(n, converter) for n in concept.narrower],
-    )
+ConceptBundle.model_rebuild()
