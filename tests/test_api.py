@@ -20,5 +20,5 @@ class TestJSKOS(unittest.TestCase):
                 "oefos2012": "https://w3id.org/oerbase/vocabs/oefos2012/",
             }
         )
-        processed_kos = jskos.process(kos, converter)
+        processed_kos = kos.process(converter)
         self.assertIsNotNone(processed_kos)

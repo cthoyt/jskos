@@ -1,12 +1,27 @@
 """A data model for JSKOS."""
 
-from .api import KOS, Concept, ProcessedConcept, ProcessedKOS, process, read
+from .api import (
+    KOS,
+    Concept,
+    ConceptBundle,
+    ConceptScheme,
+    Item,
+    Mapping,
+    ProcessedConcept,
+    ProcessedKOS,
+    Resource,
+    read,
+)
 
 __all__ = [
     "KOS",
     "Concept",
+    "ConceptBundle",
+    "ConceptScheme",
+    "Item",
+    "Mapping",
     "ProcessedConcept",
     "ProcessedKOS",
-    "process",
+    "Resource",
     "read",
 ]
