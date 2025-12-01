@@ -14,11 +14,15 @@ from pydantic import AnyUrl, BaseModel, Field
 __all__ = [
     "KOS",
     "Concept",
+    "ConceptBundle",
+    "ConceptScheme",
+    "Item",
     "LanguageCode",
     "LanguageMap",
     "Mapping",
     "ProcessedConcept",
     "ProcessedKOS",
+    "Resource",
     "read",
 ]
 
