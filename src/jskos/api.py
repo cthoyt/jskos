@@ -114,6 +114,18 @@ class Mapping(Item):
 class ConceptScheme(Item):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
 
+    top_concepts: list[Concept] | None = Field(None, alias="from")
+    namespace: AnyUrl | None = None
+    uri_pattern: str | None = Field(None, alias="uriPattern")
+    notation_pattern: str | None = Field(None, alias="notationPattern")
+    notation_examples: list[str] | None = Field(None, alias="notationExamples")
+    # concepts
+    # types
+    # distributions
+    # extent
+    # languages
+    # license
+
 
 class ConceptBundle(BaseModel):
     """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
