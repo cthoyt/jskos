@@ -65,7 +65,6 @@ class Resource(BaseModel):
 class Item(Resource):
     """An item, defined in https://gbv.github.io/jskos/#item."""
 
-    url: AnyUrl | None = None
     # notation
     preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
     alternative_label: LanguageMapOfList | None = Field(None, alias="altLabel")
@@ -210,16 +209,105 @@ def _process(res_json: dict[str, Any]) -> KOS:
     return KOS.model_validate(res_json)
 
 
-class ProcessedConcept(BaseModel):
+class ProcessedResource(BaseModel):
+    reference: Reference | None = None
+    identifier: list[Reference] | None = None
+    type: list[Reference] | None = None
+    created: datetime.date | None = None
+    issued: datetime.date | None = None
+    modified: datetime.date | None = None
+
+    # creator
+    # contributor
+    # source
+    # publisher
+    # partOf
+    # annotations
+    # qualifiedRelations
+    # qualifiedDates
+    # qualifiedLiterals
+    # rank
+
+
+class ProcessedItem(BaseModel):
+    # notation
+    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
+    alternative_label: LanguageMapOfList | None = Field(None, alias="altLabel")
+    hidden_label: LanguageMapOfList | None = Field(None, alias="hiddenLabel")
+    scope_note: LanguageMapOfList | None = Field(None, alias="scopeNote")
+    definition: LanguageMapOfList | None = Field(None)
+    example: LanguageMapOfList | None = Field(None)
+    # historyNote
+    # editorialNote
+    # changeNote
+    # note
+    # startDate
+    # endDate
+    # relatedDate
+    # relatedDates
+    # startPlace
+    # endPlace
+    # place
+    # location
+    # address
+    # replacedBy
+    # basedOn
+    # subject
+    # subjectOf
+    # depiction
+    # media
+    # tool
+    # issue
+    # issueTracker
+    # guidelines
+    # version
+    # versionOf
+
+
+class ProcessedConceptBundle(BaseModel):
+    member_set: list[ProcessedConcept] | None = Field(None, alias="memberSet")
+    member_list: list[ProcessedConcept] | None = Field(None, alias="memberList")
+    member_choice: list[ProcessedConcept] | None = Field(None, alias="memberChoice")
+    # member_roles
+
+
+class ProcessedConceptScheme(BaseModel):
+    top_concepts: list[ProcessedConcept] | None = Field(None, alias="from")
+    namespace: AnyUrl | None = None
+    uri_pattern: str | None = Field(None, alias="uriPattern")
+    notation_pattern: str | None = Field(None, alias="notationPattern")
+    notation_examples: list[str] | None = Field(None, alias="notationExamples")
+    # concepts
+    # types
+    # distributions
+    # extent
+    # languages
+    # license
+
+
+class ProcessedMapping(BaseModel):
+    from_: ProcessedConceptBundle = Field(..., alias="from")
+    to: ProcessedConceptBundle = Field(...)
+    from_scheme: ProcessedConceptScheme | None = Field(None)
+    to_scheme: ProcessedConceptScheme | None = Field(None)
+    mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
+    justification: Reference | None = None
+
+
+class ProcessedConcept(ProcessedItem, ProcessedConceptBundle):
     """A processed JSKOS concept."""
 
-    # see https://gbv.github.io/jskos/#concept
-
-    references: list[Reference] | None = None
-    label: LanguageMap
     narrower: list[ProcessedConcept] | None = Field(None)
     broader: list[ProcessedConcept] | None = Field(None)
     related: list[ProcessedConcept] | None = Field(None)
+    # previous
+    # next
+    # ancestors
+    # inScheme
+    # topConceptOf
+    mappings: list[ProcessedMapping] | None = Field(None)
+    # occurrences
+    deprecated: bool | None = None
 
 
 class ProcessedKOS(BaseModel):
@@ -230,6 +318,3 @@ class ProcessedKOS(BaseModel):
     title: LanguageMap
     description: LanguageMap
     concepts: list[ProcessedConcept] = Field(default_factory=list)
-
-
-ConceptBundle.model_rebuild()
