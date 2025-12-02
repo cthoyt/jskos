@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import datetime
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import curies
 import requests
 from curies import Converter, Reference, SemanticallyProcessable
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AliasChoices, AnyUrl, BaseModel, Field
 
 __all__ = [
     "KOS",
@@ -40,7 +42,7 @@ type LanguageMapOfList = dict[LanguageCode, list[str]]
 _PROTOCOLS: set[str] = {"http", "https"}
 
 
-class Resource(BaseModel):
+class ResourceMixin(BaseModel):
     """A resource, based on https://gbv.github.io/jskos/#resource."""
 
     uri: AnyUrl | None = None
@@ -62,7 +64,34 @@ class Resource(BaseModel):
     # rank
 
 
-class Item(Resource):
+class Resource(ResourceMixin, SemanticallyProcessable["ProcessedResource"]):
+    """A resource, based on https://gbv.github.io/jskos/#resource."""
+
+    def process(self, converter: curies.Converter) -> ProcessedResource:
+        """Process the resource."""
+        return ProcessedResource(
+            reference=converter.parse_uri(str(self.uri), strict=True)
+            if self.uri is not None
+            else None,
+            identifier=_luri(self.identifier, converter),
+            type=self.type,
+            created=self.created,
+            issued=self.issued,
+            modified=self.modified,
+            # creator
+            # contributor
+            # source
+            # publisher
+            # partOf
+            # annotations
+            # qualifiedRelations
+            # qualifiedDates
+            # qualifiedLiterals
+            # rank
+        )
+
+
+class ItemMixin(ResourceMixin):
     """An item, defined in https://gbv.github.io/jskos/#item."""
 
     # notation
@@ -72,6 +101,7 @@ class Item(Resource):
     scope_note: LanguageMapOfList | None = Field(None, alias="scopeNote")
     definition: LanguageMapOfList | None = Field(None)
     example: LanguageMapOfList | None = Field(None)
+
     # historyNote
     # editorialNote
     # changeNote
@@ -99,18 +129,105 @@ class Item(Resource):
     # versionOf
 
 
-class Mapping(Item):
+class Item(ItemMixin, SemanticallyProcessable["ProcessedItem"]):
+    """An item, defined in https://gbv.github.io/jskos/#item."""
+
+    def process(self, converter: curies.Converter) -> ProcessedItem:
+        """Process the item."""
+        return ProcessedItem(
+            reference=converter.parse_uri(str(self.uri), strict=True)
+            if self.uri is not None
+            else None,
+            identifier=_luri(self.identifier, converter),
+            type=self.type,
+            created=self.created,
+            issued=self.issued,
+            modified=self.modified,
+            # creator
+            # contributor
+            # source
+            # publisher
+            # partOf
+            # annotations
+            # qualifiedRelations
+            # qualifiedDates
+            # qualifiedLiterals
+            # rank
+            # --- below this is from Item
+            preferred_label=self.preferred_label,
+            alternative_label=self.alternative_label,
+            hidden_label=self.hidden_label,
+            scope_note=self.scope_note,
+            definition=self.definition,
+            example=self.example,
+            # historyNote
+            # editorialNote
+            # changeNote
+            # note
+            # startDate
+            # endDate
+            # relatedDate
+            # relatedDates
+            # startPlace
+            # endPlace
+            # place
+            # location
+            # address
+            # replacedBy
+            # basedOn
+            # subject
+            # subjectOf
+            # depiction
+            # media
+            # tool
+            # issue
+            # issueTracker
+            # guidelines
+            # version
+            # versionOf
+        )
+
+
+class Mapping(
+    SemanticallyProcessable["ProcessedMapping"],
+    ItemMixin,
+):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
-    from_: ConceptBundle = Field(..., alias="from")
-    to: ConceptBundle = Field(...)
-    from_scheme: ConceptScheme | None = Field(None)
-    to_scheme: ConceptScheme | None = Field(None)
+    subject_bundle: ConceptBundle = Field(
+        ..., validation_alias=AliasChoices("source_bundle", "from"), serialization_alias="from"
+    )
+    object_bundle: ConceptBundle = Field(
+        ..., validation_alias=AliasChoices("object_bundle", "to"), serialization_alias="to"
+    )
+    from_scheme: ConceptScheme | None = Field(
+        None,
+        validation_alias=AliasChoices("from_scheme", "fromScheme"),
+        serialization_alias="fromScheme",
+    )
+    to_scheme: ConceptScheme | None = Field(
+        None, validation_alias=AliasChoices("to_scheme", "toScheme"), serialization_alias="toScheme"
+    )
     mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
     justification: AnyUrl | None = None
 
+    def process(self, converter: curies.Converter) -> ProcessedMapping:
+        """Process the mapping."""
+        return ProcessedMapping(
+            from_bundle=self.subject_bundle.process(converter),
+            to_bundle=self.object_bundle.process(converter),
+            from_scheme=self.from_scheme.process(converter)
+            if self.from_scheme is not None
+            else None,
+            to_scheme=self.to_scheme.process(converter) if self.to_scheme is not None else None,
+            mapping_relevance=self.mapping_relevance,
+            justification=converter.parse_uri(str(self.justification), strict=True)
+            if self.justification is not None
+            else None,
+        )
 
-class ConceptScheme(Item):
+
+class ConceptScheme(SemanticallyProcessable["ProcessedConceptScheme"], ItemMixin):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
 
     top_concepts: list[Concept] | None = Field(None, alias="from")
@@ -118,6 +235,7 @@ class ConceptScheme(Item):
     uri_pattern: str | None = Field(None, alias="uriPattern")
     notation_pattern: str | None = Field(None, alias="notationPattern")
     notation_examples: list[str] | None = Field(None, alias="notationExamples")
+
     # concepts
     # types
     # distributions
@@ -125,17 +243,71 @@ class ConceptScheme(Item):
     # languages
     # license
 
+    def process(self, converter: curies.Converter) -> ProcessedConceptScheme:
+        """Process the concept scheme."""
+        return ProcessedConceptScheme(
+            top_concepts=_l(self.top_concepts, converter),
+            namespace=self.namespace,
+            uri_pattern=self.uri_pattern,
+            notation_pattern=self.notation_pattern,
+            notation_examples=self.notation_examples,
+            # concepts
+            # types
+            # distributions
+            # extent
+            # languages
+            # license
+        )
 
-class ConceptBundle(BaseModel):
+
+class ConceptBundleMixin(BaseModel):
     """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
 
     member_set: list[Concept] | None = Field(None, alias="memberSet")
     member_list: list[Concept] | None = Field(None, alias="memberList")
     member_choice: list[Concept] | None = Field(None, alias="memberChoice")
+
+
+class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConceptBundle"]):
+    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
+
+    member_set: list[Concept] | None = Field(None, alias="memberSet")
+    member_list: list[Concept] | None = Field(None, alias="memberList")
+    member_choice: list[Concept] | None = Field(None, alias="memberChoice")
+
     # member_roles
 
+    def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
+        """Process the concept bundle."""
+        return ProcessedConceptBundle(
+            member_set=_l(self.member_set, converter),
+            member_list=_l(self.member_list, converter),
+            member_choice=_l(self.member_choice, converter),
+            # # member_roles
+        )
 
-class Concept(Item, ConceptBundle):
+
+def _l[X](
+    inp: Sequence[SemanticallyProcessable[X]] | None, converter: curies.Converter
+) -> list[X] | None:
+    if inp is None:
+        return None
+    return [i.process(converter) for i in inp]
+
+
+def _luri(inp: Sequence[AnyUrl] | None, converter: Converter) -> list[Reference] | None:
+    if inp is None:
+        return None
+    return [converter.parse_uri(str(uri), strict=True).to_pydantic() for uri in inp]
+
+
+def _lp(inp: Sequence[str] | None, converter: Converter) -> list[Reference] | None:
+    if inp is None:
+        return None
+    return [converter.parse_uri(uri, strict=True).to_pydantic() for uri in inp]
+
+
+class Concept(SemanticallyProcessable["ProcessedConcept"], ItemMixin, ConceptBundleMixin):
     """Represents a concept in JSKOS."""
 
     narrower: list[Concept] | None = Field(None)
@@ -153,21 +325,12 @@ class Concept(Item, ConceptBundle):
     def process(self, converter: Converter) -> ProcessedConcept:
         """Process the concept."""
         return ProcessedConcept(
-            references=[
-                converter.parse_uri(str(uri), strict=True).to_pydantic() for uri in self.identifier
-            ]
-            if self.identifier is not None
-            else None,
-            label=self.preferred_label,
-            narrower=[n.process(converter) for n in self.narrower]
-            if self.narrower is not None
-            else None,
-            broader=[n.process(converter) for n in self.broader]
-            if self.broader is not None
-            else None,
-            related=[n.process(converter) for n in self.related]
-            if self.related is not None
-            else None,
+            # TODO fill in item mixin
+            narrower=_l(self.narrower, converter),
+            broader=_l(self.broader, converter),
+            related=_l(self.related, converter),
+            mappings=_lp(self.mappings, converter),
+            deprecated=self.deprecated,
         )
 
 
@@ -187,9 +350,7 @@ class KOS(BaseModel, SemanticallyProcessable["ProcessedKOS"]):
             type=self.type,
             title=self.title,
             description=self.description,
-            concepts=[concept.process(converter) for concept in self.has_top_concept]
-            if self.has_top_concept
-            else None,
+            concepts=_l(self.has_top_concept, converter),
         )
 
 
@@ -210,6 +371,8 @@ def _process(res_json: dict[str, Any]) -> KOS:
 
 
 class ProcessedResource(BaseModel):
+    """Represents a processed resource."""
+
     reference: Reference | None = None
     identifier: list[Reference] | None = None
     type: list[Reference] | None = None
@@ -230,11 +393,13 @@ class ProcessedResource(BaseModel):
 
 
 class ProcessedItem(BaseModel):
+    """Represents a processed item."""
+
     # notation
-    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
-    alternative_label: LanguageMapOfList | None = Field(None, alias="altLabel")
-    hidden_label: LanguageMapOfList | None = Field(None, alias="hiddenLabel")
-    scope_note: LanguageMapOfList | None = Field(None, alias="scopeNote")
+    preferred_label: LanguageMap | None = Field(None)
+    alternative_label: LanguageMapOfList | None = Field(None)
+    hidden_label: LanguageMapOfList | None = Field(None)
+    scope_note: LanguageMapOfList | None = Field(None)
     definition: LanguageMapOfList | None = Field(None)
     example: LanguageMapOfList | None = Field(None)
     # historyNote
@@ -265,18 +430,22 @@ class ProcessedItem(BaseModel):
 
 
 class ProcessedConceptBundle(BaseModel):
-    member_set: list[ProcessedConcept] | None = Field(None, alias="memberSet")
-    member_list: list[ProcessedConcept] | None = Field(None, alias="memberList")
-    member_choice: list[ProcessedConcept] | None = Field(None, alias="memberChoice")
+    """Represents a processed concept."""
+
+    member_set: list[ProcessedConcept] | None = Field(None)
+    member_list: list[ProcessedConcept] | None = Field(None)
+    member_choice: list[ProcessedConcept] | None = Field(None)
     # member_roles
 
 
 class ProcessedConceptScheme(BaseModel):
-    top_concepts: list[ProcessedConcept] | None = Field(None, alias="from")
+    """Represents a processed concept schema."""
+
+    top_concepts: list[ProcessedConcept] | None = Field(None)
     namespace: AnyUrl | None = None
-    uri_pattern: str | None = Field(None, alias="uriPattern")
-    notation_pattern: str | None = Field(None, alias="notationPattern")
-    notation_examples: list[str] | None = Field(None, alias="notationExamples")
+    uri_pattern: str | None = Field(None)
+    notation_pattern: str | None = Field(None)
+    notation_examples: list[str] | None = Field(None)
     # concepts
     # types
     # distributions
@@ -286,8 +455,10 @@ class ProcessedConceptScheme(BaseModel):
 
 
 class ProcessedMapping(BaseModel):
-    from_: ProcessedConceptBundle = Field(..., alias="from")
-    to: ProcessedConceptBundle = Field(...)
+    """Represents a processed mapping."""
+
+    from_bundle: ProcessedConceptBundle = Field(...)
+    to_bundle: ProcessedConceptBundle = Field(...)
     from_scheme: ProcessedConceptScheme | None = Field(None)
     to_scheme: ProcessedConceptScheme | None = Field(None)
     mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
