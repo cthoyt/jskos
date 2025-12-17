@@ -266,39 +266,38 @@ class Resource(ResourceMixin, SemanticallyProcessable[ProcessedResource]):
 class ItemMixin(ResourceMixin):
     """An item, defined in https://gbv.github.io/jskos/#item."""
 
-    # notation
-    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
-    alternative_label: LanguageMapOfList | None = Field(None, alias="altLabel")
-    hidden_label: LanguageMapOfList | None = Field(None, alias="hiddenLabel")
-    scope_note: LanguageMapOfList | None = Field(None, alias="scopeNote")
+    notation: list[str] | None = None
+    preferred_label: LanguageMap | None = Field(None, serialization_alias="prefLabel")
+    alternative_label: LanguageMapOfList | None = Field(None, serialization_alias="altLabel")
+    hidden_label: LanguageMapOfList | None = Field(None, serialization_alias="hiddenLabel")
+    scope_note: LanguageMapOfList | None = Field(None, serialization_alias="scopeNote")
     definition: LanguageMapOfList | None = Field(None)
     example: LanguageMapOfList | None = Field(None)
-
-    # historyNote
-    # editorialNote
-    # changeNote
-    # note
-    # startDate
-    # endDate
-    # relatedDate
-    # relatedDates
-    # startPlace
-    # endPlace
-    # place
-    # location
-    # address
-    # replacedBy
-    # basedOn
-    # subject
-    # subjectOf
-    # depiction
-    # media
-    # tool
-    # issue
-    # issueTracker
-    # guidelines
-    # version
-    # versionOf
+    history_note: LanguageMapOfList | None = Field(None, serialization_alias="historyNote")
+    editorial_note: LanguageMapOfList | None = Field(None, serialization_alias="editorialNote")
+    change_note: LanguageMapOfList | None = Field(None, serialization_alias="changeNote")
+    note: LanguageMapOfList | None = Field(None)
+    start_date: datetime.date | None = Field(None, serialization_alias="startDate")
+    end_date: datetime.date | None = Field(None, serialization_alias="endDate")
+    related_date: datetime.date | None = Field(None, serialization_alias="relatedDate")
+    related_dates: list[datetime.date] | None = Field(None, serialization_alias="relatedDates")
+    start_place: JSKOSSet | None = Field(None, serialization_alias="startPlace")
+    end_place: JSKOSSet | None = Field(None, serialization_alias="endPlace")
+    place: JSKOSSet | None = Field(None)
+    # location# TODO
+    # address# TODO
+    replaced_by: list[Item] | None = Field(None, serialization_alias="replacedBy")
+    based_on: list[Item] | None = Field(None, serialization_alias="basedOn")
+    subject: JSKOSSet | None = None
+    subject_of: JSKOSSet | None = Field(None, serialization_alias="subjectOf")
+    depiction: list[Any] | None = None
+    # media # TODO
+    tool: list[Item] | None = None
+    issue: list[Item] | None = None
+    issue_tracker: list[Item] | None = Field(None, serialization_alias="issueTracker")
+    guidelines: list[Item] | None = None
+    version: str | None = None
+    version_of: list[Item] | None = Field(None, serialization_alias="versionOf")
 
 
 class Item(ItemMixin, SemanticallyProcessable["ProcessedItem"]):
@@ -449,19 +448,32 @@ class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConcep
         )
 
 
+class Occurrence(ResourceMixin, ConceptBundleMixin):
+    """An occurrence, based on https://gbv.github.io/jskos/#occurrence."""
+
+    database: Item | None = None
+    count: int | None = None
+    frequency: float | None = Field(None, le=1.0, ge=0.0)
+    relation: AnyUrl | None = None
+    schemes: list[ConceptScheme] | None = None
+    url: AnyUrl | None = None
+    template: str | None = None
+    separator: str | None = None
+
+
 class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedConcept"]):
     """Represents a concept in JSKOS."""
 
-    narrower: list[Concept] | None = Field(None)
-    broader: list[Concept] | None = Field(None)
-    related: list[Concept] | None = Field(None)
-    # previous
-    # next
-    # ancestors
-    # inScheme
-    # topConceptOf
+    narrower: JSKOSSet | None = None
+    broader: JSKOSSet | None = None
+    related: JSKOSSet | None = None
+    previous: JSKOSSet | None = None
+    next: JSKOSSet | None = None
+    ancestors: JSKOSSet | None = None
+    in_scheme: list[ConceptScheme] | None = Field(None, serialization_alias="inScheme")
+    top_concept_of: list[ConceptScheme] | None = Field(None, serialization_alias="topConceptOf")
     mappings: list[Mapping] | None = Field(None)
-    # occurrences
+    occurrences: list[Occurrence] | None = None
     deprecated: bool | None = None
 
     def process(self, converter: Converter) -> ProcessedConcept:
@@ -512,7 +524,7 @@ def _process(res_json: dict[str, Any]) -> KOS:
     return KOS.model_validate(res_json)
 
 
-class ProcessedItem(BaseModel):
+class ProcessedItem(ProcessedResource):
     """Represents a processed item."""
 
     # notation
