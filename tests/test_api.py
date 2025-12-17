@@ -67,7 +67,8 @@ class TestExamples(unittest.TestCase):
         ]
         concept = Concept.model_validate({"occurrences": occurrences})
         self.assertIsNotNone(concept)
-        self.assertIsNotNone(concept.occurrences)
+        if concept.occurrences is None:
+            self.fail()
         self.assertEqual(3, len(concept.occurrences))
 
     def test_18(self) -> None:
