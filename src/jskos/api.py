@@ -188,10 +188,7 @@ class Item(ItemMixin, SemanticallyProcessable["ProcessedItem"]):
         )
 
 
-class Mapping(
-    SemanticallyProcessable["ProcessedMapping"],
-    ItemMixin,
-):
+class Mapping(ItemMixin, SemanticallyProcessable["ProcessedMapping"]):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
     subject_bundle: ConceptBundle = Field(
@@ -227,7 +224,7 @@ class Mapping(
         )
 
 
-class ConceptScheme(SemanticallyProcessable["ProcessedConceptScheme"], ItemMixin):
+class ConceptScheme(ItemMixin, SemanticallyProcessable["ProcessedConceptScheme"]):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
 
     top_concepts: list[Concept] | None = Field(None, alias="from")
@@ -307,7 +304,7 @@ def _lp(inp: Sequence[str] | None, converter: Converter) -> list[Reference] | No
     return [converter.parse_uri(uri, strict=True).to_pydantic() for uri in inp]
 
 
-class Concept(SemanticallyProcessable["ProcessedConcept"], ItemMixin, ConceptBundleMixin):
+class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedConcept"]):
     """Represents a concept in JSKOS."""
 
     narrower: list[Concept] | None = Field(None)
