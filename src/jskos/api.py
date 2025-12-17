@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import datetime
 import json
+from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import curies
 import requests
@@ -42,53 +43,223 @@ type LanguageMapOfList = dict[LanguageCode, list[str]]
 
 _PROTOCOLS: set[str] = {"http", "https"}
 
+type JSKOSSet = list[Resource | None]
+type ProcessedJSKOSSet = list[ProcessedResource | None]
+
+#: https://gbv.github.io/jskos/#rank
+type Rank = Literal["preferred", "normal", "deprecated"]
+
 
 class ResourceMixin(BaseModel):
     """A resource, based on https://gbv.github.io/jskos/#resource."""
 
+    context: AnyUrl | list[AnyUrl] | None = Field(None, serialization_alias="@context")
     uri: AnyUrl | None = None
     identifier: list[AnyUrl] | None = None
     type: list[AnyUrl] | None = None
     created: datetime.date | None = None
     issued: datetime.date | None = None
     modified: datetime.date | None = None
+    creator: JSKOSSet | None = None
+    contributor: JSKOSSet | None = None
+    source: JSKOSSet | None = None
+    publisher: JSKOSSet | None = None
+    part_of: JSKOSSet | None = Field(None, serialization_alias="partOf")
+    annotations: list[Annotation] | None = None
+    qualified_relations: dict[AnyUrl, QualifiedRelation] | None = Field(
+        None, serialization_alias="qualifiedRelations"
+    )
+    qualified_dates: dict[AnyUrl, QualifiedDate] | None = Field(
+        None, serialization_alias="qualifiedDates"
+    )
+    qualified_literals: dict[AnyUrl, QualifiedLiteral] | None = Field(
+        None, serialization_alias="qualifiedLiterals"
+    )
+    rank: Rank | None = None
 
-    # creator
-    # contributor
-    # source
-    # publisher
-    # partOf
-    # annotations
-    # qualifiedRelations
-    # qualifiedDates
-    # qualifiedLiterals
-    # rank
+
+class QualifiedValue[X](BaseModel, SemanticallyProcessable[X], ABC):
+    """A qualified value, based on https://gbv.github.io/jskos/#qualified-value."""
+
+    start_date: datetime.date | None = Field(None, serialization_alias="startDate")
+    end_date: datetime.date | None = Field(None, serialization_alias="endDate")
+    source: JSKOSSet | None = None
+    rank: Rank | None = None
 
 
-class Resource(ResourceMixin, SemanticallyProcessable["ProcessedResource"]):
+class ProcessedQualifiedValue(BaseModel):
+    """A qualified value, based on https://gbv.github.io/jskos/#qualified-value."""
+
+    start_date: datetime.date | None = Field(None, serialization_alias="startDate")
+    end_date: datetime.date | None = Field(None, serialization_alias="endDate")
+    source: ProcessedJSKOSSet | None = None
+    rank: Rank | None = None
+
+
+class ProcessedQualifiedRelation(ProcessedQualifiedValue):
+    """A processed qualified relation."""
+
+    resource: ProcessedResource
+
+
+class QualifiedRelation(QualifiedValue[ProcessedQualifiedRelation]):
+    """A qualified relation, based on https://gbv.github.io/jskos/#qualified-relation."""
+
+    resource: Resource
+
+    def process(self, converter: Converter) -> ProcessedQualifiedRelation:
+        """Process the qualified relation."""
+        return ProcessedQualifiedRelation(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            source=_process_jskos_set(self.source, converter),
+            rank=self.rank,
+            resource=self.resource.process(converter),
+        )
+
+
+class ProcessedQualifiedDate(ProcessedQualifiedValue):
+    """A processed qualified date."""
+
+    date: datetime.date
+    place: ProcessedJSKOSSet | None = None
+
+
+class QualifiedDate(QualifiedValue[ProcessedQualifiedDate]):
+    """A qualified date, based on https://gbv.github.io/jskos/#qualified-date."""
+
+    date: datetime.date
+    place: JSKOSSet | None = None
+
+    def process(self, converter: Converter) -> ProcessedQualifiedDate:
+        """Process the qualified date."""
+        return ProcessedQualifiedDate(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            source=_process_jskos_set(self.source, converter),
+            rank=self.rank,
+            date=self.date,
+            place=_process_jskos_set(self.place, converter),
+        )
+
+
+class QualifiedLiteralInner(BaseModel):
+    """A string with a language."""
+
+    string: str
+    language: LanguageCode | None = None
+
+
+class ProcessedQualifiedLiteral(ProcessedQualifiedValue):
+    """A processed qualified literal."""
+
+    literal: QualifiedLiteralInner
+    reference: Reference | None = None
+    type: list[Reference] | None = None
+
+
+class QualifiedLiteral(QualifiedValue[ProcessedQualifiedLiteral]):
+    """A qualified literal, based on https://gbv.github.io/jskos/#qualified-literal."""
+
+    literal: QualifiedLiteralInner
+    uri: AnyUrl | None = None
+    type: list[AnyUrl] | None = None
+
+    def process(self, converter: Converter) -> ProcessedQualifiedLiteral:
+        """Process the qualified literal."""
+        return ProcessedQualifiedLiteral(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            source=_process_jskos_set(self.source, converter),
+            rank=self.rank,
+            literal=self.literal,
+            reference=_parse_optional_url(self.uri, converter),
+            type=_parse_optional_urls(self.type, converter),
+        )
+
+
+class ProcessedAnnotation(BaseModel):
+    """A processed annotation."""
+
+    context: AnyUrl
+    type: str
+    reference: Reference  # from `id`
+    target: Reference | ProcessedResource | ProcessedAnnotation
+
+
+class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
+    """An annotation, based on https://gbv.github.io/jskos/#annotation."""
+
+    context: AnyUrl = Field(..., serialization_alias="@context")
+    type: str
+    id: AnyUrl
+    target: AnyUrl | Resource | Annotation
+
+    def process(self, converter: Converter) -> ProcessedAnnotation:
+        """Process the annotation."""
+        target: Reference | ProcessedResource | ProcessedAnnotation
+        match self.target:
+            case Resource() | Annotation():
+                target = self.target.process(converter)
+            case AnyUrl():
+                target = converter.parse_uri(str(self.target), strict=True).to_pydantic()
+            case _:
+                raise TypeError
+        return ProcessedAnnotation(
+            context=self.context,
+            type=self.type,  # TODO what is this?
+            reference=converter.parse_uri(str(self.id), strict=True).to_pydantic(),
+            target=target,
+        )
+
+
+class ProcessedResource(BaseModel):
+    """Represents a processed resource."""
+
+    context: AnyUrl | list[AnyUrl] | None = None
+    reference: Reference | None = None  # from uri
+    identifier: list[Reference] | None = None
+    type: list[Reference] | None = None
+    created: datetime.date | None = None
+    issued: datetime.date | None = None
+    modified: datetime.date | None = None
+    creator: ProcessedJSKOSSet | None = None
+    contributor: ProcessedJSKOSSet | None = None
+    source: ProcessedJSKOSSet | None = None
+    publisher: ProcessedJSKOSSet | None = None
+    part_of: ProcessedJSKOSSet | None = None
+    annotations: list[ProcessedAnnotation] | None = None
+    qualified_relations: dict[Reference, ProcessedQualifiedRelation] | None = None
+    qualified_dates: dict[Reference, ProcessedQualifiedDate] | None = None
+    qualified_literals: dict[Reference, ProcessedQualifiedLiteral] | None = None
+    rank: Rank | None = None
+
+
+class Resource(ResourceMixin, SemanticallyProcessable[ProcessedResource]):
     """A resource, based on https://gbv.github.io/jskos/#resource."""
 
     def process(self, converter: curies.Converter) -> ProcessedResource:
         """Process the resource."""
         return ProcessedResource(
+            context=self.context,
             reference=converter.parse_uri(str(self.uri), strict=True)
             if self.uri is not None
             else None,
-            identifier=_luri(self.identifier, converter),
+            identifier=_parse_optional_urls(self.identifier, converter),
             type=self.type,
             created=self.created,
             issued=self.issued,
             modified=self.modified,
-            # creator
-            # contributor
-            # source
-            # publisher
-            # partOf
-            # annotations
-            # qualifiedRelations
-            # qualifiedDates
-            # qualifiedLiterals
-            # rank
+            creator=_process_jskos_set(self.creator, converter),
+            contributor=_process_jskos_set(self.contributor, converter),
+            source=_process_jskos_set(self.source, converter),
+            publisher=_process_jskos_set(self.publisher, converter),
+            part_of=_process_jskos_set(self.part_of, converter),
+            annotations=process_many(self.annotations, converter),
+            qualified_relations=_process_dict(self.qualified_relations, converter),
+            qualified_dates=_process_dict(self.qualified_dates, converter),
+            qualified_literals=_process_dict(self.qualified_literals, converter),
+            rank=self.rank,
         )
 
 
@@ -136,10 +307,8 @@ class Item(ItemMixin, SemanticallyProcessable["ProcessedItem"]):
     def process(self, converter: curies.Converter) -> ProcessedItem:
         """Process the item."""
         return ProcessedItem(
-            reference=converter.parse_uri(str(self.uri), strict=True)
-            if self.uri is not None
-            else None,
-            identifier=_luri(self.identifier, converter),
+            reference=_parse_optional_url(self.uri, converter),
+            identifier=_parse_optional_urls(self.identifier, converter),
             type=self.type,
             created=self.created,
             issued=self.issued,
@@ -280,18 +449,6 @@ class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConcep
         )
 
 
-def _luri(inp: Sequence[AnyUrl] | None, converter: Converter) -> list[Reference] | None:
-    if inp is None:
-        return None
-    return [converter.parse_uri(str(uri), strict=True).to_pydantic() for uri in inp]
-
-
-def _lp(inp: Sequence[str] | None, converter: Converter) -> list[Reference] | None:
-    if inp is None:
-        return None
-    return [converter.parse_uri(uri, strict=True).to_pydantic() for uri in inp]
-
-
 class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedConcept"]):
     """Represents a concept in JSKOS."""
 
@@ -353,28 +510,6 @@ def _process(res_json: dict[str, Any]) -> KOS:
     res_json.pop("@context", {})
     # TODO use context to process
     return KOS.model_validate(res_json)
-
-
-class ProcessedResource(BaseModel):
-    """Represents a processed resource."""
-
-    reference: Reference | None = None
-    identifier: list[Reference] | None = None
-    type: list[Reference] | None = None
-    created: datetime.date | None = None
-    issued: datetime.date | None = None
-    modified: datetime.date | None = None
-
-    # creator
-    # contributor
-    # source
-    # publisher
-    # partOf
-    # annotations
-    # qualifiedRelations
-    # qualifiedDates
-    # qualifiedLiterals
-    # rank
 
 
 class ProcessedItem(BaseModel):
@@ -474,3 +609,34 @@ class ProcessedKOS(BaseModel):
     title: LanguageMap
     description: LanguageMap
     concepts: list[ProcessedConcept] = Field(default_factory=list)
+
+
+def _process_jskos_set(s: JSKOSSet | None, converter: curies.Converter) -> ProcessedJSKOSSet | None:
+    if s is None:
+        return None
+    return [e.process(converter) if e is not None else None for e in s]
+
+
+def _process_dict[X](
+    i: dict[AnyUrl, SemanticallyProcessable[X]] | None, converter: Converter
+) -> dict[Reference, X] | None:
+    if i is None:
+        return None
+    return {
+        converter.parse_uri(str(k), strict=True).to_pydantic(): v.process(converter)
+        for k, v in i.items()
+    }
+
+
+def _parse_optional_urls(
+    urls: Sequence[str | AnyUrl] | None, converter: Converter
+) -> list[Reference] | None:
+    if urls is None:
+        return None
+    return [converter.parse_uri(str(url), strict=True).to_pydantic() for url in urls]
+
+
+def _parse_optional_url(url: str | AnyUrl | None, converter: Converter) -> Reference | None:
+    if url is None:
+        return None
+    return converter.parse_uri(str(url), strict=True).to_pydantic()
