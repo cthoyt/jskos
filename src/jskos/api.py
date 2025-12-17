@@ -264,16 +264,11 @@ class ConceptBundleMixin(BaseModel):
     member_set: list[Concept] | None = Field(None, alias="memberSet")
     member_list: list[Concept] | None = Field(None, alias="memberList")
     member_choice: list[Concept] | None = Field(None, alias="memberChoice")
+    # member_roles
 
 
 class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConceptBundle"]):
     """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
-
-    member_set: list[Concept] | None = Field(None, alias="memberSet")
-    member_list: list[Concept] | None = Field(None, alias="memberList")
-    member_choice: list[Concept] | None = Field(None, alias="memberChoice")
-
-    # member_roles
 
     def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
         """Process the concept bundle."""
@@ -281,7 +276,7 @@ class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConcep
             member_set=process_many(self.member_set, converter),
             member_list=process_many(self.member_list, converter),
             member_choice=process_many(self.member_choice, converter),
-            # # member_roles
+            # member_roles
         )
 
 
