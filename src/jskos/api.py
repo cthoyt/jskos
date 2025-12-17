@@ -384,7 +384,18 @@ class Item(ItemMixin, SemanticallyProcessable[ProcessedItem]):
         )
 
 
-class Mapping(ItemMixin, SemanticallyProcessable["ProcessedMapping"]):
+class ProcessedMapping(Item):
+    """Represents a processed mapping."""
+
+    from_bundle: ProcessedConceptBundle = Field(...)
+    to_bundle: ProcessedConceptBundle = Field(...)
+    from_scheme: ProcessedConceptScheme | None = None
+    to_scheme: ProcessedConceptScheme | None = None
+    mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
+    justification: Reference | None = None
+
+
+class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
     subject_bundle: ConceptBundle = Field(..., serialization_alias="from")
@@ -485,7 +496,16 @@ class ConceptBundleMixin(BaseModel):
         }
 
 
-class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConceptBundle"]):
+class ProcessedConceptBundle(BaseModel):
+    """Represents a processed concept."""
+
+    member_set: list[ProcessedConcept] | None = None
+    member_list: list[ProcessedConcept] | None = None
+    member_choice: list[ProcessedConcept] | None = None
+    member_roles: dict[Reference, list[ProcessedConcept]] | None = None
+
+
+class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable[ProcessedConceptBundle]):
     """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
 
     def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
@@ -534,7 +554,23 @@ class Occurrence(ResourceMixin, ConceptBundleMixin, SemanticallyProcessable[Proc
         )
 
 
-class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedConcept"]):
+class ProcessedConcept(ProcessedItem, ProcessedConceptBundle):
+    """A processed JSKOS concept."""
+
+    narrower: ProcessedJSKOSSet | None = None
+    broader: ProcessedJSKOSSet | None = None
+    related: ProcessedJSKOSSet | None = None
+    previous: ProcessedJSKOSSet | None = None
+    next: ProcessedJSKOSSet | None = None
+    ancestors: ProcessedJSKOSSet | None = None
+    in_scheme: list[ProcessedConceptScheme] | None = None
+    top_concept_of: list[ProcessedConcept] | None = None
+    mappings: list[ProcessedMapping] | None = None
+    occurrences: list[ProcessedOccurrence] | None = None
+    deprecated: bool | None = None
+
+
+class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable[ProcessedConcept]):
     """Represents a concept in JSKOS."""
 
     narrower: JSKOSSet | None = None
@@ -571,7 +607,17 @@ class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedC
         )
 
 
-class KOS(BaseModel, SemanticallyProcessable["ProcessedKOS"]):
+class ProcessedKOS(BaseModel):
+    """A processed knowledge organization system."""
+
+    id: str
+    type: str
+    title: LanguageMap
+    description: LanguageMap
+    concepts: list[ProcessedConcept] = Field(default_factory=list)
+
+
+class KOS(BaseModel, SemanticallyProcessable[ProcessedKOS]):
     """A wrapper around a knowledge organization system (KOS)."""
 
     id: str
@@ -605,52 +651,6 @@ def _process(res_json: dict[str, Any]) -> KOS:
     res_json.pop("@context", {})
     # TODO use context to process
     return KOS.model_validate(res_json)
-
-
-class ProcessedConceptBundle(BaseModel):
-    """Represents a processed concept."""
-
-    member_set: list[ProcessedConcept] | None = None
-    member_list: list[ProcessedConcept] | None = None
-    member_choice: list[ProcessedConcept] | None = None
-    member_roles: dict[Reference, list[ProcessedConcept]] | None = None
-
-
-class ProcessedMapping(BaseModel):
-    """Represents a processed mapping."""
-
-    from_bundle: ProcessedConceptBundle = Field(...)
-    to_bundle: ProcessedConceptBundle = Field(...)
-    from_scheme: ProcessedConceptScheme | None = None
-    to_scheme: ProcessedConceptScheme | None = None
-    mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
-    justification: Reference | None = None
-
-
-class ProcessedConcept(ProcessedItem, ProcessedConceptBundle):
-    """A processed JSKOS concept."""
-
-    narrower: ProcessedJSKOSSet | None = None
-    broader: ProcessedJSKOSSet | None = None
-    related: ProcessedJSKOSSet | None = None
-    previous: ProcessedJSKOSSet | None = None
-    next: ProcessedJSKOSSet | None = None
-    ancestors: ProcessedJSKOSSet | None = None
-    in_scheme: list[ProcessedConceptScheme] | None = None
-    top_concept_of: list[ProcessedConcept] | None = None
-    mappings: list[ProcessedMapping] | None = None
-    occurrences: list[ProcessedOccurrence] | None = None
-    deprecated: bool | None = None
-
-
-class ProcessedKOS(BaseModel):
-    """A processed knowledge organization system."""
-
-    id: str
-    type: str
-    title: LanguageMap
-    description: LanguageMap
-    concepts: list[ProcessedConcept] = Field(default_factory=list)
 
 
 def _process_jskos_set(s: JSKOSSet | None, converter: curies.Converter) -> ProcessedJSKOSSet | None:
