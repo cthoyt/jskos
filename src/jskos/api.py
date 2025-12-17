@@ -11,6 +11,7 @@ from typing import Any
 import curies
 import requests
 from curies import Converter, Reference, SemanticallyProcessable
+from curies.mixins import process_many
 from pydantic import AliasChoices, AnyUrl, BaseModel, Field
 
 __all__ = [
@@ -243,7 +244,7 @@ class ConceptScheme(ItemMixin, SemanticallyProcessable["ProcessedConceptScheme"]
     def process(self, converter: curies.Converter) -> ProcessedConceptScheme:
         """Process the concept scheme."""
         return ProcessedConceptScheme(
-            top_concepts=_l(self.top_concepts, converter),
+            top_concepts=process_many(self.top_concepts, converter),
             namespace=self.namespace,
             uri_pattern=self.uri_pattern,
             notation_pattern=self.notation_pattern,
@@ -277,19 +278,11 @@ class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable["ProcessedConcep
     def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
         """Process the concept bundle."""
         return ProcessedConceptBundle(
-            member_set=_l(self.member_set, converter),
-            member_list=_l(self.member_list, converter),
-            member_choice=_l(self.member_choice, converter),
+            member_set=process_many(self.member_set, converter),
+            member_list=process_many(self.member_list, converter),
+            member_choice=process_many(self.member_choice, converter),
             # # member_roles
         )
-
-
-def _l[X](
-    inp: Sequence[SemanticallyProcessable[X]] | None, converter: curies.Converter
-) -> list[X] | None:
-    if inp is None:
-        return None
-    return [i.process(converter) for i in inp]
 
 
 def _luri(inp: Sequence[AnyUrl] | None, converter: Converter) -> list[Reference] | None:
@@ -323,10 +316,10 @@ class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable["ProcessedC
         """Process the concept."""
         return ProcessedConcept(
             # TODO fill in item mixin
-            narrower=_l(self.narrower, converter),
-            broader=_l(self.broader, converter),
-            related=_l(self.related, converter),
-            mappings=_lp(self.mappings, converter),
+            narrower=process_many(self.narrower, converter),
+            broader=process_many(self.broader, converter),
+            related=process_many(self.related, converter),
+            mappings=process_many(self.mappings, converter),
             deprecated=self.deprecated,
         )
 
@@ -347,7 +340,7 @@ class KOS(BaseModel, SemanticallyProcessable["ProcessedKOS"]):
             type=self.type,
             title=self.title,
             description=self.description,
-            concepts=_l(self.has_top_concept, converter),
+            concepts=process_many(self.has_top_concept, converter),
         )
 
 
