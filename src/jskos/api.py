@@ -49,6 +49,39 @@ type ProcessedJSKOSSet = list[ProcessedResource | None]
 #: https://gbv.github.io/jskos/#rank
 type Rank = Literal["preferred", "normal", "deprecated"]
 
+type LocationType = Literal[
+    "Point",
+    "MultiPoint",
+    "LineString",
+    "MultiLineString",
+    "Polygon",
+    "MultiPolygon",
+    "GeometryCollection",
+]
+
+
+class Location(BaseModel):
+    """A location, based on https://gbv.github.io/jskos/#location."""
+
+    type: LocationType
+    coordinates: list[float]
+
+
+class Address(BaseModel):
+    """An address, based on https://gbv.github.io/jskos/#address."""
+
+    pobox: str | None = None
+    ext: str | None = None
+    street: str | None = None
+    locality: str | None = None
+    region: str | None = None
+    code: str | None = None
+    country: str | None = None
+
+
+# https://gbv.github.io/jskos/#media isn't super well-defined
+type Media = dict[str, Any]
+
 
 class ResourceMixin(BaseModel):
     """A resource, based on https://gbv.github.io/jskos/#resource."""
@@ -107,6 +140,14 @@ class QualifiedValue[X](BaseModel, SemanticallyProcessable[X], ABC):
     source: JSKOSSet | None = None
     rank: Rank | None = None
 
+    def _process_helper(self, converter: Converter) -> dict[str, Any]:
+        return {
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "source": _process_jskos_set(self.source, converter),
+            "rank": self.rank,
+        }
+
 
 class ProcessedQualifiedValue(BaseModel):
     """A qualified value, based on https://gbv.github.io/jskos/#qualified-value."""
@@ -131,10 +172,7 @@ class QualifiedRelation(QualifiedValue[ProcessedQualifiedRelation]):
     def process(self, converter: Converter) -> ProcessedQualifiedRelation:
         """Process the qualified relation."""
         return ProcessedQualifiedRelation(
-            start_date=self.start_date,
-            end_date=self.end_date,
-            source=_process_jskos_set(self.source, converter),
-            rank=self.rank,
+            **self._process_helper(converter),
             resource=self.resource.process(converter),
         )
 
@@ -155,10 +193,7 @@ class QualifiedDate(QualifiedValue[ProcessedQualifiedDate]):
     def process(self, converter: Converter) -> ProcessedQualifiedDate:
         """Process the qualified date."""
         return ProcessedQualifiedDate(
-            start_date=self.start_date,
-            end_date=self.end_date,
-            source=_process_jskos_set(self.source, converter),
-            rank=self.rank,
+            **self._process_helper(converter),
             date=self.date,
             place=_process_jskos_set(self.place, converter),
         )
@@ -189,10 +224,7 @@ class QualifiedLiteral(QualifiedValue[ProcessedQualifiedLiteral]):
     def process(self, converter: Converter) -> ProcessedQualifiedLiteral:
         """Process the qualified literal."""
         return ProcessedQualifiedLiteral(
-            start_date=self.start_date,
-            end_date=self.end_date,
-            source=_process_jskos_set(self.source, converter),
-            rank=self.rank,
+            **self._process_helper(converter),
             literal=self.literal,
             reference=_parse_optional_url(self.uri, converter),
             type=_parse_optional_urls(self.type, converter),
@@ -223,13 +255,13 @@ class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
             case Resource() | Annotation():
                 target = self.target.process(converter)
             case AnyUrl():
-                target = converter.parse_uri(str(self.target), strict=True).to_pydantic()
+                target = _parse_url(self.target, converter)
             case _:
                 raise TypeError
         return ProcessedAnnotation(
             context=self.context,
             type=self.type,  # TODO what is this?
-            reference=converter.parse_uri(str(self.id), strict=True).to_pydantic(),
+            reference=_parse_url(self.id, converter),
             target=target,
         )
 
@@ -285,14 +317,14 @@ class ItemMixin(ResourceMixin):
     start_place: JSKOSSet | None = Field(None, serialization_alias="startPlace")
     end_place: JSKOSSet | None = Field(None, serialization_alias="endPlace")
     place: JSKOSSet | None = None
-    # location# TODO
-    # address# TODO
+    location: Location | None = None
+    address: Address | None = None
     replaced_by: list[Item] | None = Field(None, serialization_alias="replacedBy")
     based_on: list[Item] | None = Field(None, serialization_alias="basedOn")
     subject: JSKOSSet | None = None
     subject_of: JSKOSSet | None = Field(None, serialization_alias="subjectOf")
     depiction: list[Any] | None = None
-    # media # TODO
+    media: Media | None = None
     tool: list[Item] | None = None
     issue: list[Item] | None = None
     issue_tracker: list[Item] | None = Field(None, serialization_alias="issueTracker")
@@ -308,31 +340,31 @@ class ItemMixin(ResourceMixin):
             "scope_note": self.scope_note,
             "definition": self.definition,
             "example": self.example,
-            # historyNote
-            # editorialNote
-            # changeNote
-            # note
-            # startDate
-            # endDate
-            # relatedDate
-            # relatedDates
-            # startPlace
-            # endPlace
-            # place
-            # location
-            # address
-            # replacedBy
-            # basedOn
-            # subject
-            # subjectOf
-            # depiction
-            # media
-            # tool
-            # issue
-            # issueTracker
-            # guidelines
-            # version
-            # versionOf
+            "history_note": self.history_note,
+            "editorial_note": self.editorial_note,
+            "change_note": self.change_note,
+            "note": self.note,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "related_date": self.related_date,
+            "related_dates": self.related_dates,
+            "start_place": _process_jskos_set(self.start_place, converter),
+            "end_place": _process_jskos_set(self.end_place, converter),
+            "place": _process_jskos_set(self.place, converter),
+            "location": self.location,
+            "address": self.address,
+            "replaced_by": process_many(self.replaced_by, converter),
+            "based_on": process_many(self.based_on, converter),
+            "subject": _process_jskos_set(self.subject, converter),
+            "subject_of": _process_jskos_set(self.subject_of, converter),
+            "depiction": self.depiction,
+            "media": self.media,
+            "tool": process_many(self.tool, converter),
+            "issue": process_many(self.issue, converter),
+            "issue_tracker": process_many(self.issue_tracker, converter),
+            "guidelines": process_many(self.guidelines, converter),
+            "version": self.version_of,
+            "version_of": process_many(self.version_of, converter),
         }
 
 
@@ -357,14 +389,14 @@ class ProcessedItem(ProcessedResource):
     start_place: ProcessedJSKOSSet | None = None
     end_place: ProcessedJSKOSSet | None = None
     place: ProcessedJSKOSSet | None = None
-    # location # TODO
-    # address # TODO
+    location: Location | None = None
+    address: Address | None = None
     replaced_by: list[ProcessedItem] | None = None
     based_on: list[ProcessedItem] | None = None
     subject: ProcessedJSKOSSet | None = None
     subject_of: ProcessedJSKOSSet | None = None
     depiction: list[Any] | None = None
-    # media # TODO
+    media: Media | None = None
     tool: list[ProcessedItem] | None = None
     issue: list[ProcessedItem] | None = None
     issue_tracker: list[ProcessedItem] | None = None
@@ -415,9 +447,7 @@ class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
             from_scheme=_safe_process(self.from_scheme, converter),
             to_scheme=_safe_process(self.to_scheme, converter),
             mapping_relevance=self.mapping_relevance,
-            justification=converter.parse_uri(str(self.justification), strict=True).to_pydantic()
-            if self.justification is not None
-            else None,
+            justification=_parse_optional_url(self.justification, converter),
         )
 
 
@@ -486,9 +516,7 @@ class ConceptBundleMixin(BaseModel):
             "member_list": process_many(self.member_list, converter),
             "member_choice": process_many(self.member_choice, converter),
             "member_roles": {
-                converter.parse_uri(str(uri), strict=True).to_pydantic(): [
-                    concept.process(converter) for concept in concepts
-                ]
+                _parse_url(uri, converter): [concept.process(converter) for concept in concepts]
                 for uri, concepts in self.member_roles.items()
             }
             if self.member_roles is not None
@@ -664,10 +692,7 @@ def _process_dict[X](
 ) -> dict[Reference, X] | None:
     if i is None:
         return None
-    return {
-        converter.parse_uri(str(k), strict=True).to_pydantic(): v.process(converter)
-        for k, v in i.items()
-    }
+    return {_parse_url(k, converter): v.process(converter) for k, v in i.items()}
 
 
 def _safe_process[X](x: SemanticallyProcessable[X] | None, converter: Converter) -> X | None:
@@ -676,15 +701,19 @@ def _safe_process[X](x: SemanticallyProcessable[X] | None, converter: Converter)
     return x.process(converter)
 
 
+def _parse_url(url: str | AnyUrl, converter: Converter) -> Reference:
+    return converter.parse_uri(str(url), strict=True).to_pydantic()
+
+
 def _parse_optional_urls(
     urls: Sequence[str | AnyUrl] | None, converter: Converter
 ) -> list[Reference] | None:
     if urls is None:
         return None
-    return [converter.parse_uri(str(url), strict=True).to_pydantic() for url in urls]
+    return [_parse_url(url, converter) for url in urls]
 
 
 def _parse_optional_url(url: str | AnyUrl | None, converter: Converter) -> Reference | None:
     if url is None:
         return None
-    return converter.parse_uri(str(url), strict=True).to_pydantic()
+    return _parse_url(url, converter)
