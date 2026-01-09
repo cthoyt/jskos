@@ -7,7 +7,7 @@ import json
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Generic, Literal, TypeAlias, TypeVar
+from typing import Any, Generic, Literal, Optional, TypeAlias, TypeVar
 
 import curies
 import requests
@@ -45,8 +45,8 @@ LanguageMapOfList: TypeAlias = dict[LanguageCode, list[str]]
 
 _PROTOCOLS: set[str] = {"http", "https"}
 
-JSKOSSet: TypeAlias = "list[Resource | None]"
-ProcessedJSKOSSet: TypeAlias = "list[ProcessedResource | None]"
+JSKOSSet: TypeAlias = list[Optional["Resource"]]
+ProcessedJSKOSSet: TypeAlias = list[Optional["ProcessedResource"]]
 
 #: https://gbv.github.io/jskos/#rank
 Rank: TypeAlias = Literal["preferred", "normal", "deprecated"]
