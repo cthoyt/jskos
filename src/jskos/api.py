@@ -7,7 +7,7 @@ import json
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Generic, Literal, Optional, TypeAlias, TypeVar
 
 import curies
 import requests
@@ -31,26 +31,27 @@ __all__ = [
     "read",
 ]
 
+X = TypeVar("X")
 #: A hint for timeout in :func:`requests.get`
-type TimeoutHint = int | float | None | tuple[float | int, float | int]
+TimeoutHint: TypeAlias = int | float | None | tuple[float | int, float | int]
 
 #: A two-letter language code
-type LanguageCode = str
+LanguageCode: TypeAlias = str
 
 #: A dictionary from two-letter language codes to values in multiple languages
-type LanguageMap = dict[LanguageCode, str]
+LanguageMap: TypeAlias = dict[LanguageCode, str]
 
-type LanguageMapOfList = dict[LanguageCode, list[str]]
+LanguageMapOfList: TypeAlias = dict[LanguageCode, list[str]]
 
 _PROTOCOLS: set[str] = {"http", "https"}
 
-type JSKOSSet = list[Resource | None]
-type ProcessedJSKOSSet = list[ProcessedResource | None]
+JSKOSSet: TypeAlias = list[Optional["Resource"]]
+ProcessedJSKOSSet: TypeAlias = list[Optional["ProcessedResource"]]
 
 #: https://gbv.github.io/jskos/#rank
-type Rank = Literal["preferred", "normal", "deprecated"]
+Rank: TypeAlias = Literal["preferred", "normal", "deprecated"]
 
-type LocationType = Literal[
+LocationType: TypeAlias = Literal[
     "Point",
     "MultiPoint",
     "LineString",
@@ -81,7 +82,7 @@ class Address(BaseModel):
 
 
 # https://gbv.github.io/jskos/#media isn't super well-defined
-type Media = dict[str, Any]
+Media: TypeAlias = dict[str, Any]
 
 
 class ResourceMixin(BaseModel):
@@ -133,7 +134,7 @@ class ResourceMixin(BaseModel):
         }
 
 
-class QualifiedValue[X](BaseModel, SemanticallyProcessable[X], ABC):
+class QualifiedValue(BaseModel, Generic[X], SemanticallyProcessable[X], ABC):
     """A qualified value, based on https://gbv.github.io/jskos/#qualified-value."""
 
     start_date: datetime.date | None = Field(None, serialization_alias="startDate")
@@ -698,7 +699,7 @@ def _process_jskos_set(s: JSKOSSet | None, converter: curies.Converter) -> Proce
     return [e.process(converter) if e is not None else None for e in s]
 
 
-def _process_dict[X](
+def _process_dict(
     i: dict[AnyUrl, SemanticallyProcessable[X]] | None, converter: Converter
 ) -> dict[Reference, X] | None:
     if i is None:
@@ -706,7 +707,7 @@ def _process_dict[X](
     return {_parse_url(k, converter): v.process(converter) for k, v in i.items()}
 
 
-def _safe_process[X](x: SemanticallyProcessable[X] | None, converter: Converter) -> X | None:
+def _safe_process(x: SemanticallyProcessable[X] | None, converter: Converter) -> X | None:
     if x is None:
         return None
     return x.process(converter)
