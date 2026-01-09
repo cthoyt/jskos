@@ -10,6 +10,7 @@ from .api import (
     ProcessedConcept,
     ProcessedKOS,
     Resource,
+    process,
     read,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "ProcessedConcept",
     "ProcessedKOS",
     "Resource",
+    "process",
     "read",
 ]

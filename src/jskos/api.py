@@ -27,6 +27,7 @@ __all__ = [
     "ProcessedConcept",
     "ProcessedKOS",
     "Resource",
+    "process",
     "read",
 ]
 
@@ -673,6 +674,16 @@ def read(path: str | Path, *, timeout: TimeoutHint = None) -> KOS:
         return _process(res.json())
     with open(path) as file:
         return _process(json.load(file))
+
+
+def process(kos: KOS, *, converter: Converter | None = None) -> ProcessedKOS:
+    """Process a KOS."""
+    if converter is None:
+        import bioregistry
+
+        converter = bioregistry.get_default_converter()
+
+    return kos.process(converter)
 
 
 def _process(res_json: dict[str, Any]) -> KOS:
