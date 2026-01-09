@@ -47,7 +47,7 @@ license-files = [
 
 requires-python = ">=3.12"
 dependencies = [
-    "curies>=0.12.5",
+    "curies>=0.12.6",
     "pydantic",
     "requests",
 ]
