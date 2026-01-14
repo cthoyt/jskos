@@ -174,7 +174,7 @@ class ResourceMixin(BaseModel):
             "context": self.context,
             "reference": _parse_optional_url(self.uri, converter),
             "identifier": _parse_optional_urls(self.identifier, converter),
-            "type": self.type,
+            "type": _parse_optional_urls(self.type, converter),
             "created": self.created,
             "issued": self.issued,
             "modified": self.modified,
