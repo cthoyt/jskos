@@ -6,11 +6,15 @@ import curies
 from curies import Reference
 
 import jskos
-from jskos.api import Concept, Occurrence
+from jskos.api import Concept, Occurrence, Registry
 
 converter = curies.Converter.from_prefix_map(
     {
         "wikidata": "http://www.wikidata.org/entity/",
+        "foaf": "http://xmlns.com/foaf/0.1/",
+        "schema": "http://schema.org/",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+        "owl": "http://www.w3.org/2002/07/owl#",
     }
 )
 
@@ -70,6 +74,37 @@ class TestExamples(unittest.TestCase):
         if concept.occurrences is None:
             self.fail()
         self.assertEqual(3, len(concept.occurrences))
+
+    def test_11(self) -> None:
+        """Test a registry."""
+        record = {
+            "type": ["http://www.w3.org/ns/dcat#Catalog"],
+            "prefLabel": {"en": "People entities"},
+            "objectTypes": [
+                "http://www.w3.org/2004/02/skos/core#Concept",
+                "http://www.w3.org/2002/07/owl#Class",
+            ],
+            "types": [
+                {"uri": "http://www.w3.org/2004/02/skos/core#Concept"},
+                {"uri": "http://www.w3.org/2002/07/owl#Class"},
+            ],
+            "concepts": [
+                {"uri": "http://schema.org/Person"},
+                {"uri": "http://xmlns.com/foaf/0.1/Person"},
+                {"uri": "http://www.wikidata.org/entity/Q5"},
+            ],
+        }
+        registry = Registry.model_validate(record)
+        processed_registry = registry.process(converter)
+
+        self.assertEqual(
+            [
+                Reference(prefix="schema", identifier="Person"),
+                Reference(prefix="foaf", identifier="Person"),
+                Reference(prefix="wikidata", identifier="Q5"),
+            ],
+            [c.reference for c in processed_registry.concepts or []],
+        )
 
     def test_18(self) -> None:
         """Test example 18 from https://gbv.github.io/jskos/#lst-qualified-literal."""
