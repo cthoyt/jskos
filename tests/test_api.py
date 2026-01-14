@@ -6,7 +6,7 @@ import curies
 from curies import Reference
 
 import jskos
-from jskos.api import Concept, Occurrence, Registry
+from jskos.api import Concept, Location, Occurrence, Registry, Resource
 
 converter = curies.Converter.from_prefix_map(
     {
@@ -22,6 +22,23 @@ converter = curies.Converter.from_prefix_map(
 
 class TestExamples(unittest.TestCase):
     """Test examples from the documentation."""
+
+    def test_2(self) -> None:
+        """Test example 2: a resource with ranked publishers."""
+        record = {
+            "publisher": [
+                {"prefLabel": {"en": "Acme Corporation"}, "rank": "preferred"},
+                {"prefLabel": {"en": "DIY Products"}, "rank": "normal"},
+            ]
+        }
+        raw_resource = Resource.model_validate(record)
+        raw_resource.process(converter)
+
+    def test_4(self) -> None:
+        """Test example 4: position of the RMS Titanic as point."""
+        record = {"type": "Point", "coordinates": [-49.946944, 41.7325, -3803]}
+        point = Location.model_validate(record)
+        self.assertEqual("Point", point.type)
 
     def test_9(self) -> None:
         """Test example 9 from https://gbv.github.io/jskos/#lst-ex2."""
