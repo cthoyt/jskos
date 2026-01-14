@@ -24,8 +24,26 @@ __all__ = [
     "LanguageCode",
     "LanguageMap",
     "Mapping",
+    "ProcessedAnnotation",
+    "ProcessedChecksum",
     "ProcessedConcept",
+    "ProcessedConceptBundle",
+    "ProcessedConceptScheme",
+    "ProcessedConcordance",
+    "ProcessedDataset",
+    "ProcessedDistribution",
+    "ProcessedItem",
+    "ProcessedJSKOSSet",
     "ProcessedKOS",
+    "ProcessedMapping",
+    "ProcessedOccurrence",
+    "ProcessedQualifiedDate",
+    "ProcessedQualifiedLiteral",
+    "ProcessedQualifiedRelation",
+    "ProcessedQualifiedValue",
+    "ProcessedRegistry",
+    "ProcessedResource",
+    "ProcessedService",
     "Resource",
     "process",
     "read",
@@ -85,6 +103,45 @@ class Address(BaseModel):
 Media: TypeAlias = dict[str, Any]
 
 
+class ConceptBundleMixin(BaseModel):
+    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
+
+    member_set: list[Concept] | None = Field(None, alias="memberSet")
+    member_list: list[Concept] | None = Field(None, alias="memberList")
+    member_choice: list[Concept] | None = Field(None, alias="memberChoice")
+    member_roles: dict[AnyUrl, list[Concept]] | None = Field(None, alias="memberRoles")
+
+    def _process_concept_bundle_helper(self, converter: curies.Converter) -> dict[str, Any]:
+        return {
+            "member_set": process_many(self.member_set, converter),
+            "member_list": process_many(self.member_list, converter),
+            "member_choice": process_many(self.member_choice, converter),
+            "member_roles": {
+                _parse_url(uri, converter): [concept.process(converter) for concept in concepts]
+                for uri, concepts in self.member_roles.items()
+            }
+            if self.member_roles is not None
+            else None,
+        }
+
+
+class ProcessedConceptBundle(BaseModel):
+    """Represents a processed concept."""
+
+    member_set: list[ProcessedConcept] | None = None
+    member_list: list[ProcessedConcept] | None = None
+    member_choice: list[ProcessedConcept] | None = None
+    member_roles: dict[Reference, list[ProcessedConcept]] | None = None
+
+
+class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable[ProcessedConceptBundle]):
+    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
+
+    def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
+        """Process the concept bundle."""
+        return ProcessedConceptBundle.model_validate(self._process_concept_bundle_helper(converter))
+
+
 class ResourceMixin(BaseModel):
     """A resource, based on https://gbv.github.io/jskos/#resource."""
 
@@ -117,7 +174,7 @@ class ResourceMixin(BaseModel):
             "context": self.context,
             "reference": _parse_optional_url(self.uri, converter),
             "identifier": _parse_optional_urls(self.identifier, converter),
-            "type": self.type,
+            "type": _parse_optional_urls(self.type, converter),
             "created": self.created,
             "issued": self.issued,
             "modified": self.modified,
@@ -236,34 +293,36 @@ class QualifiedLiteral(QualifiedValue[ProcessedQualifiedLiteral]):
 class ProcessedAnnotation(BaseModel):
     """A processed annotation."""
 
-    context: AnyUrl
+    context: AnyUrl | None = None
     type: str
-    reference: Reference  # from `id`
-    target: Reference | ProcessedResource | ProcessedAnnotation
+    reference: Reference | None = None  # from `id`
+    target: Reference | ProcessedResource | ProcessedAnnotation | None = None
 
 
 class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
     """An annotation, based on https://gbv.github.io/jskos/#annotation."""
 
-    context: AnyUrl = Field(..., serialization_alias="@context")
-    type: str
-    id: AnyUrl
-    target: AnyUrl | Resource | Annotation
+    context: AnyUrl | None = Field(None, serialization_alias="@context")
+    type: str = Field(...)
+    id: AnyUrl | None = Field(None)  # it's not clear from the docs that this isn't required
+    target: AnyUrl | Resource | Annotation | None = None
 
     def process(self, converter: Converter) -> ProcessedAnnotation:
         """Process the annotation."""
-        target: Reference | ProcessedResource | ProcessedAnnotation
+        target: Reference | ProcessedResource | ProcessedAnnotation | None
         match self.target:
             case Resource() | Annotation():
                 target = self.target.process(converter)
             case AnyUrl():
                 target = _parse_url(self.target, converter)
+            case None:
+                target = None
             case _:
-                raise TypeError
+                raise TypeError(f"could not process target: {self.target}")
         return ProcessedAnnotation(
             context=self.context,
             type=self.type,  # TODO what is this?
-            reference=_parse_url(self.id, converter),
+            reference=_parse_url(str(self.id), converter),
             target=target,
         )
 
@@ -336,6 +395,7 @@ class ItemMixin(ResourceMixin):
 
     def _process_item_helper(self, converter: Converter) -> dict[str, Any]:
         return {
+            # TODO notation?
             "preferred_label": self.preferred_label,
             "alternative_label": self.alternative_label,
             "hidden_label": self.hidden_label,
@@ -418,7 +478,139 @@ class Item(ItemMixin, SemanticallyProcessable[ProcessedItem]):
         )
 
 
-class ProcessedMapping(Item):
+class ProcessedDataset(ProcessedItem):
+    """A model for datasets, defined in https://gbv.github.io/jskos/#dataset."""
+
+    distributions: list[ProcessedDistribution] | None = None
+    services: list[ProcessedService] | None = None
+    extent: str | None = None
+    license: ProcessedDataset | None = None
+    object_types: list[Reference] | None = None
+
+
+class DatasetMixin(ItemMixin):
+    """A mixin for datasets, defined in https://gbv.github.io/jskos/#dataset."""
+
+    distributions: list[Distribution] | None = None
+    services: list[Service] | None = None
+    extent: str | None = None
+    license: JSKOSSet | None = None
+    object_types: list[AnyUrl] | None = Field(None, alias="objectTypes")
+
+    def _process_dataset_helper(self, converter: curies.Converter) -> dict[str, Any]:
+        return {
+            "distributions": process_many(self.distributions, converter),
+            "services": process_many(self.services, converter),
+            "extent": self.extent,
+            "license": _process_jskos_set(self.license, converter),
+            "object_types": _parse_optional_urls(self.object_types, converter),
+        }
+
+
+class Dataset(DatasetMixin, SemanticallyProcessable[ProcessedDataset]):
+    """A raw model for datasets, defined in https://gbv.github.io/jskos/#dataset."""
+
+    def process(self, converter: Converter) -> ProcessedDataset:
+        """Process the dataset."""
+        return ProcessedDataset(
+            **self._process_resource_helper(converter),
+            **self._process_item_helper(converter),
+            **self._process_dataset_helper(converter),
+        )
+
+
+class ProcessedService(ProcessedItem):
+    """A model for services in JSKOS, defined in https://gbv.github.io/jskos/#service."""
+
+    api: AnyUrl
+    endpoint: AnyUrl
+    serves: list[ProcessedDataset]
+
+
+class Service(ItemMixin, SemanticallyProcessable[ProcessedService]):
+    """A raw service in JSKOS, defined in https://gbv.github.io/jskos/#service."""
+
+    api: AnyUrl
+    endpoint: AnyUrl
+    serves: list[Dataset]
+
+    def process(self, converter: Converter) -> ProcessedService:
+        """Process the service."""
+        return ProcessedService(
+            api=self.api,
+            endpoint=self.endpoint,
+            serves=[dataset.process(converter) for dataset in self.serves],
+        )
+
+
+class ProcessedChecksum(BaseModel):
+    """Represents a checksum, defined in https://gbv.github.io/jskos/#checksum."""
+
+    algorithm: Reference
+    value: str
+
+
+class Checksum(BaseModel, SemanticallyProcessable[ProcessedChecksum]):
+    """Represents a checksum, defined in https://gbv.github.io/jskos/#checksum."""
+
+    algorithm: AnyUrl = Field(
+        ..., examples=[AnyUrl("http://spdx.org/rdf/terms#checksumAlgorithm_sha256")]
+    )
+    value: str
+
+    def process(self, converter: Converter) -> ProcessedChecksum:
+        """Process the checksum."""
+        return ProcessedChecksum(algorithm=_parse_url(self.algorithm, converter), value=self.value)
+
+
+class ProcessedDistribution(ProcessedItem):
+    """A processed distribution, defined in https://gbv.github.io/jskos/#distribution."""
+
+    download: AnyUrl
+    access_url: AnyUrl
+    format: AnyUrl
+    mimetype: AnyUrl | str
+    compress_format: AnyUrl
+    package_format: AnyUrl
+    services: list[ProcessedService] | None = None
+    license: ProcessedJSKOSSet
+    size: str
+    checksum: ProcessedChecksum
+
+
+class Distribution(ItemMixin, SemanticallyProcessable[ProcessedDistribution]):
+    """A raw distribution in JSKOS, defined in https://gbv.github.io/jskos/#distribution."""
+
+    download: AnyUrl
+    access_url: AnyUrl = Field(alias="accessURL")
+    format: AnyUrl
+    mimetype: AnyUrl | str
+    compress_format: AnyUrl = Field(alias="compressFormat")
+    package_format: AnyUrl = Field(alias="packageFormat")
+    services: list[Service] | None = None
+    license: JSKOSSet
+    size: str
+    checksum: Checksum
+
+    def process(self, converter: Converter) -> ProcessedDistribution:
+        """Process the distribution."""
+        return ProcessedDistribution(
+            **self._process_resource_helper(converter),
+            **self._process_item_helper(converter),
+            download=self.download,
+            access_url=self.access_url,
+            format=self.format,
+            mimetype=self.mimetype,
+            compress_format=self.compress_format,
+            package_format=self.package_format,
+            services=process_many(self.services, converter),
+            license=_process_jskos_set(self.license, converter),
+            size=self.size,
+            checksum=self.checksum.process(converter),
+        )
+
+
+class ProcessedMapping(ProcessedItem, ProcessedConceptBundle):
     """Represents a processed mapping."""
 
     from_bundle: ProcessedConceptBundle = Field(...)
@@ -432,8 +624,10 @@ class ProcessedMapping(Item):
 class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
-    subject_bundle: ConceptBundle = Field(..., serialization_alias="from")
-    object_bundle: ConceptBundle = Field(..., serialization_alias="to")
+    model_config = {"populate_by_name": True}
+
+    subject_bundle: ConceptBundle = Field(..., alias="from")
+    object_bundle: ConceptBundle = Field(..., alias="to")
     from_scheme: ConceptScheme | None = Field(None, serialization_alias="fromScheme")
     to_scheme: ConceptScheme | None = Field(None, serialization_alias="toScheme")
     mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
@@ -453,7 +647,7 @@ class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
         )
 
 
-class ProcessedConceptScheme(ProcessedItem):
+class ProcessedConceptScheme(ProcessedDataset):
     """Represents a processed concept schema."""
 
     top_concepts: list[ProcessedConcept] | None = None
@@ -469,8 +663,10 @@ class ProcessedConceptScheme(ProcessedItem):
     # license
 
 
-class ConceptScheme(ItemMixin, SemanticallyProcessable[ProcessedConceptScheme]):
+class ConceptScheme(DatasetMixin, SemanticallyProcessable[ProcessedConceptScheme]):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
+
+    model_config = {"populate_by_name": True}
 
     top_concepts: list[Concept] | None = Field(None, alias="from")
     namespace: AnyUrl | None = None
@@ -490,6 +686,7 @@ class ConceptScheme(ItemMixin, SemanticallyProcessable[ProcessedConceptScheme]):
         return ProcessedConceptScheme(
             **self._process_resource_helper(converter),
             **self._process_item_helper(converter),
+            **self._process_dataset_helper(converter),
             top_concepts=process_many(self.top_concepts, converter),
             namespace=self.namespace,
             uri_pattern=self.uri_pattern,
@@ -504,46 +701,7 @@ class ConceptScheme(ItemMixin, SemanticallyProcessable[ProcessedConceptScheme]):
         )
 
 
-class ConceptBundleMixin(BaseModel):
-    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
-
-    member_set: list[Concept] | None = Field(None, alias="memberSet")
-    member_list: list[Concept] | None = Field(None, alias="memberList")
-    member_choice: list[Concept] | None = Field(None, alias="memberChoice")
-    member_roles: dict[AnyUrl, list[Concept]] | None = Field(None, alias="memberRoles")
-
-    def _process_concept_bundle_helper(self, converter: curies.Converter) -> dict[str, Any]:
-        return {
-            "member_set": process_many(self.member_set, converter),
-            "member_list": process_many(self.member_list, converter),
-            "member_choice": process_many(self.member_choice, converter),
-            "member_roles": {
-                _parse_url(uri, converter): [concept.process(converter) for concept in concepts]
-                for uri, concepts in self.member_roles.items()
-            }
-            if self.member_roles is not None
-            else None,
-        }
-
-
-class ProcessedConceptBundle(BaseModel):
-    """Represents a processed concept."""
-
-    member_set: list[ProcessedConcept] | None = None
-    member_list: list[ProcessedConcept] | None = None
-    member_choice: list[ProcessedConcept] | None = None
-    member_roles: dict[Reference, list[ProcessedConcept]] | None = None
-
-
-class ConceptBundle(ConceptBundleMixin, SemanticallyProcessable[ProcessedConceptBundle]):
-    """A concept bundle, defined in https://gbv.github.io/jskos/#concept-bundle."""
-
-    def process(self, converter: curies.Converter) -> ProcessedConceptBundle:
-        """Process the concept bundle."""
-        return ProcessedConceptBundle.model_validate(self._process_concept_bundle_helper(converter))
-
-
-class ProcessedOccurrence(ResourceMixin, ConceptBundleMixin):
+class ProcessedOccurrence(ProcessedResource, ProcessedConceptBundle):
     """An occurrence, based on https://gbv.github.io/jskos/#occurrence."""
 
     database: ProcessedItem | None = None
@@ -621,8 +779,6 @@ class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable[ProcessedCo
             **self._process_resource_helper(converter),
             **self._process_item_helper(converter),
             **self._process_concept_bundle_helper(converter),
-            # TODO fill in item parts
-            # TODO fill in concept bundle parts
             narrower=_process_jskos_set(self.narrower, converter),
             broader=_process_jskos_set(self.broader, converter),
             related=_process_jskos_set(self.related, converter),
@@ -634,6 +790,77 @@ class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable[ProcessedCo
             mappings=process_many(self.mappings, converter),
             occurrences=process_many(self.occurrences, converter),
             deprecated=self.deprecated,
+        )
+
+
+class ProcessedConcordance(ProcessedDataset):
+    """Represents a raw concordance, defined in https://gbv.github.io/jskos/#concordance."""
+
+    mappings: list[ProcessedMapping]
+    from_scheme: ProcessedConceptScheme
+    to_scheme: ProcessedConceptScheme
+
+
+class Concordance(DatasetMixin, SemanticallyProcessable[ProcessedConcordance]):
+    """Represents a raw concordance, defined in https://gbv.github.io/jskos/#concordance."""
+
+    mappings: list[Mapping]
+    from_scheme: ConceptScheme = Field(..., serialization_alias="fromScheme")
+    to_scheme: ConceptScheme = Field(..., serialization_alias="toScheme")
+
+    def process(self, converter: Converter) -> ProcessedConcordance:
+        """Process the concordance."""
+        return ProcessedConcordance(
+            **self._process_resource_helper(converter),
+            **self._process_item_helper(converter),
+            **self._process_dataset_helper(converter),
+            mappings=process_many(self.mappings, converter),
+            from_scheme=self.from_scheme.process(converter),
+            to_scheme=self.to_scheme.process(converter),
+        )
+
+
+class ProcessedRegistry(ProcessedDataset):
+    """A registry, defined in https://gbv.github.io/jskos/#registry."""
+
+    concepts: list[ProcessedConcept] | None = None
+    schemes: list[ProcessedConceptScheme] | None = None
+    mappings: list[ProcessedMapping] | None = None
+    concordances: list[ProcessedConcordance] | None = None
+    occurrences: list[ProcessedOccurrence] | None = None
+    registries: list[ProcessedRegistry] | None = None
+    types: list[ProcessedConcept] | None = None
+    annotations: list[ProcessedAnnotation] | None = None
+    languages: list[str] | None = None
+
+
+class Registry(DatasetMixin, SemanticallyProcessable[ProcessedRegistry]):
+    """A raw model for a registry, defined in https://gbv.github.io/jskos/#registry."""
+
+    concepts: list[Concept] | None = None
+    schemes: list[ConceptScheme] | None = None
+    mappings: list[Mapping] | None = None
+    concordances: list[Concordance] | None = None
+    occurrences: list[Occurrence] | None = None
+    registries: list[Registry] | None = None
+    types: list[Concept] | None = None
+    # annotations was duplicated in the docs
+    languages: list[str] | None = None
+
+    def process(self, converter: Converter) -> ProcessedRegistry:
+        """Process the registry."""
+        return ProcessedRegistry(
+            **self._process_resource_helper(converter),
+            **self._process_item_helper(converter),
+            **self._process_dataset_helper(converter),
+            concepts=process_many(self.concepts, converter),
+            schemes=process_many(self.schemes, converter),
+            mappings=process_many(self.mappings, converter),
+            concordances=process_many(self.concordances, converter),
+            occurrences=process_many(self.occurrences, converter),
+            registries=process_many(self.registries, converter),
+            types=process_many(self.types, converter),
+            languages=self.languages,
         )
 
 
