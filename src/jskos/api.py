@@ -247,7 +247,7 @@ class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
 
     context: AnyUrl | None = Field(None, serialization_alias="@context")
     type: str = Field(...)
-    id: AnyUrl | None = Field(None) # it's not clear from the docs that this isn't required
+    id: AnyUrl | None = Field(None)  # it's not clear from the docs that this isn't required
     target: AnyUrl | Resource | Annotation | None = None
 
     def process(self, converter: Converter) -> ProcessedAnnotation:
@@ -261,7 +261,7 @@ class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
             case None:
                 target = None
             case _:
-                raise TypeError(f'could not process target: {self.target}')
+                raise TypeError(f"could not process target: {self.target}")
         return ProcessedAnnotation(
             context=self.context,
             type=self.type,  # TODO what is this?
@@ -435,9 +435,7 @@ class ProcessedMapping(Item):
 class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
-    model_config = {
-        "populate_by_name": True
-    }
+    model_config = {"populate_by_name": True}
 
     subject_bundle: ConceptBundle = Field(..., alias="from")
     object_bundle: ConceptBundle = Field(..., alias="to")
@@ -479,9 +477,7 @@ class ProcessedConceptScheme(ProcessedItem):
 class ConceptScheme(ItemMixin, SemanticallyProcessable[ProcessedConceptScheme]):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
 
-    model_config = {
-        "populate_by_name": True
-    }
+    model_config = {"populate_by_name": True}
 
     top_concepts: list[Concept] | None = Field(None, alias="from")
     namespace: AnyUrl | None = None

@@ -79,7 +79,7 @@ typing = [
     "mypy",
     "pydantic",
     "types-requests",
-    "click-types",
+    "types-click",
 ]
 docs-lint = [
     { include-group = "docs" },
