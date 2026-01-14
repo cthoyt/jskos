@@ -236,30 +236,32 @@ class QualifiedLiteral(QualifiedValue[ProcessedQualifiedLiteral]):
 class ProcessedAnnotation(BaseModel):
     """A processed annotation."""
 
-    context: AnyUrl
+    context: AnyUrl | None = None
     type: str
-    reference: Reference  # from `id`
-    target: Reference | ProcessedResource | ProcessedAnnotation
+    reference: Reference | None = None  # from `id`
+    target: Reference | ProcessedResource | ProcessedAnnotation | None = None
 
 
 class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
     """An annotation, based on https://gbv.github.io/jskos/#annotation."""
 
-    context: AnyUrl = Field(..., serialization_alias="@context")
-    type: str
-    id: AnyUrl
-    target: AnyUrl | Resource | Annotation
+    context: AnyUrl | None = Field(None, serialization_alias="@context")
+    type: str = Field(...)
+    id: AnyUrl | None = Field(None) # it's not clear from the docs that this isn't required
+    target: AnyUrl | Resource | Annotation | None = None
 
     def process(self, converter: Converter) -> ProcessedAnnotation:
         """Process the annotation."""
-        target: Reference | ProcessedResource | ProcessedAnnotation
+        target: Reference | ProcessedResource | ProcessedAnnotation | None
         match self.target:
             case Resource() | Annotation():
                 target = self.target.process(converter)
             case AnyUrl():
                 target = _parse_url(self.target, converter)
+            case None:
+                target = None
             case _:
-                raise TypeError
+                raise TypeError(f'could not process target: {self.target}')
         return ProcessedAnnotation(
             context=self.context,
             type=self.type,  # TODO what is this?
@@ -336,6 +338,7 @@ class ItemMixin(ResourceMixin):
 
     def _process_item_helper(self, converter: Converter) -> dict[str, Any]:
         return {
+            # TODO notation?
             "preferred_label": self.preferred_label,
             "alternative_label": self.alternative_label,
             "hidden_label": self.hidden_label,
@@ -432,8 +435,12 @@ class ProcessedMapping(Item):
 class Mapping(ItemMixin, SemanticallyProcessable[ProcessedMapping]):
     """A mapping, defined in https://gbv.github.io/jskos/#mapping."""
 
-    subject_bundle: ConceptBundle = Field(..., serialization_alias="from")
-    object_bundle: ConceptBundle = Field(..., serialization_alias="to")
+    model_config = {
+        "populate_by_name": True
+    }
+
+    subject_bundle: ConceptBundle = Field(..., alias="from")
+    object_bundle: ConceptBundle = Field(..., alias="to")
     from_scheme: ConceptScheme | None = Field(None, serialization_alias="fromScheme")
     to_scheme: ConceptScheme | None = Field(None, serialization_alias="toScheme")
     mapping_relevance: float | None = Field(None, le=1.0, ge=0.0)
@@ -471,6 +478,10 @@ class ProcessedConceptScheme(ProcessedItem):
 
 class ConceptScheme(ItemMixin, SemanticallyProcessable[ProcessedConceptScheme]):
     """A concept scheme, defined in https://gbv.github.io/jskos/#concept-scheme."""
+
+    model_config = {
+        "populate_by_name": True
+    }
 
     top_concepts: list[Concept] | None = Field(None, alias="from")
     namespace: AnyUrl | None = None
@@ -621,8 +632,6 @@ class Concept(ItemMixin, ConceptBundleMixin, SemanticallyProcessable[ProcessedCo
             **self._process_resource_helper(converter),
             **self._process_item_helper(converter),
             **self._process_concept_bundle_helper(converter),
-            # TODO fill in item parts
-            # TODO fill in concept bundle parts
             narrower=_process_jskos_set(self.narrower, converter),
             broader=_process_jskos_set(self.broader, converter),
             related=_process_jskos_set(self.related, converter),
