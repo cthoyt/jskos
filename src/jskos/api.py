@@ -265,7 +265,7 @@ class Annotation(BaseModel, SemanticallyProcessable[ProcessedAnnotation]):
         return ProcessedAnnotation(
             context=self.context,
             type=self.type,  # TODO what is this?
-            reference=_parse_url(self.id, converter),
+            reference=_parse_url(str(self.id), converter),
             target=target,
         )
 
