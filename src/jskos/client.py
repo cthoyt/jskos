@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import requests
+from pydantic import BaseModel
 
-from jskos import ConceptScheme
+from jskos import ConceptScheme, Item
 
 __all__ = [
     "BARTOCClient",
     "JSKOSClient",
+    "Status",
+    "Validation",
 ]
+
+
+class Status(BaseModel):
+    """A status, see https://github.com/gbv/jskos-server#get-status."""
+
+    # TODO implement based on https://gbv.github.io/jskos-server/status.schema.json
+
+
+#:
+Validation: TypeAlias = list[bool]
 
 
 class JSKOSClient:
@@ -27,21 +40,77 @@ class JSKOSClient:
         res.raise_for_status()
         return res
 
-    def get_status(self):
+    def _post(self, end: str, params: dict[str, Any] | None = None, data=None) -> requests.Response:
+        url = self.base + end
+        res = requests.post(url, timeout=10, params=params, data=data)
+        res.raise_for_status()
+        return res
+
+    def get_status(self) -> Status:
         """Get the JSKOS API status, see https://github.com/gbv/jskos-server#get-status."""
         raise NotImplementedError
 
     def get_check_auth(self):
-        """Check whether a user is authorizeed, see https://github.com/gbv/jskos-server#get-checkauth."""
+        """Check whether a user is authorized, see https://github.com/gbv/jskos-server#get-checkauth."""
         raise NotImplementedError
 
-    def get_validate(self):
-        """Validate a JSKOS object via a GET request, see https://github.com/gbv/jskos-server#get-validate."""
-        raise NotImplementedError
+    def get_validate(
+        self,
+        url: str,
+        object_type: type[Item],
+        unknown_fields: bool | None = None,
+        known_schemes: bool | None = None,
+    ) -> Validation:
+        """Validate a JSKOS object via a GET request, see https://github.com/gbv/jskos-server#get-validate.
 
-    def post_validate(self):
-        """Validate a JSKOS object via a POST request, see https://github.com/gbv/jskos-server#post-validate."""
-        raise NotImplementedError
+        :param url: The URL for the object to validate.
+        :param object_type: See https://gbv.github.io/jskos/#object-types
+        :param unknown_fields: If set to true, will disallow unknown fields inside
+            objects
+        :param known_schemes: If set to true, will allow concepts that are not in
+            schemes in the database
+
+        :returns: A validation object
+        """
+        params: dict[str, Any] = {
+            "url": url,
+            # FIXME this should probably get an explicit mapping
+            "type": object_type.__name__.lower(),
+        }
+        if unknown_fields is not None:
+            params["unknownFields"] = unknown_fields
+        if known_schemes is not None:
+            params["knownSchemes"] = known_schemes
+        res = self._get("/validate", params=params)
+        return cast(Validation, res.json())
+
+    def post_validate(
+        self,
+        obj: Item,
+        unknown_fields: bool | None = None,
+        known_schemes: bool | None = None,
+    ) -> Validation:
+        """Validate a JSKOS object via a POST request, see https://github.com/gbv/jskos-server#post-validate.
+
+        :param obj: A JSKOS object
+        :param unknown_fields: If set to true, will disallow unknown fields inside
+            objects
+        :param known_schemes: If set to true, will allow concepts that are not in
+            schemes in the database
+
+        :returns: A validation object
+        """
+        params: dict[str, Any] = {
+            "type": obj.__class__.__name__.lower(),
+        }
+        if unknown_fields is not None:
+            params["unknownFields"] = unknown_fields
+        if known_schemes is not None:
+            params["knownSchemes"] = known_schemes
+        res = self._post(
+            "/validate", params=params, data=obj.model_dump(exclude_none=True, exclude_unset=True)
+        )
+        return cast(Validation, res.json())
 
     def get_data(self, uri: str) -> list[dict[str, Any]]:
         """Get data for entity, passed via URI, see https://github.com/gbv/jskos-server#get-data."""

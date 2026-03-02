@@ -3,8 +3,7 @@
 import unittest
 from typing import ClassVar
 
-from jskos import ConceptScheme
-from jskos.client import JSKOSClient
+from jskos import ConceptScheme, JSKOSClient
 
 
 class TestJSKOSClient(unittest.TestCase):
