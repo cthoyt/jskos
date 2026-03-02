@@ -361,7 +361,7 @@ class ItemMixin(ResourceMixin):
     """An item, defined in https://gbv.github.io/jskos/#item."""
 
     notation: list[str] | None = None
-    preferred_label: LanguageMap | None = Field(None, serialization_alias="prefLabel")
+    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
     alternative_label: LanguageMapOfList | None = Field(None, serialization_alias="altLabel")
     hidden_label: LanguageMapOfList | None = Field(None, serialization_alias="hiddenLabel")
     scope_note: LanguageMapOfList | None = Field(None, serialization_alias="scopeNote")
@@ -606,7 +606,7 @@ class Distribution(ItemMixin, SemanticallyProcessable[ProcessedDistribution]):
             services=process_many(self.services, converter),
             license=_process_jskos_set(self.license, converter),
             size=self.size,
-            checksum=self.checksum.process(converter),
+            checksum=self.checksum.process(converter) if self.checksum is not None else None,
         )
 
 

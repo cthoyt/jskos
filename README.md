@@ -60,7 +60,7 @@ from jskos import JSKOSClient
 client = JSKOSClient("https://coli-conc.gbv.de/api/")
 
 # see https://github.com/gbv/jskos-server#get-voc
-vocabularies = client.get_vocabularies(limit=1)
+vocabularies = client.get_concept_schemes(limit=1)
 ```
 
 ## 🚀 Installation
