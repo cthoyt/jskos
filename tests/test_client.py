@@ -3,12 +3,13 @@
 import unittest
 from typing import ClassVar
 
-from jskos.client import JSKOSClient
 from jskos import ConceptScheme
+from jskos.client import JSKOSClient
 
 
 class TestJSKOSClient(unittest.TestCase):
     """Test the JSKOS API client."""
+
     client: ClassVar[JSKOSClient]
 
     @classmethod

@@ -13,6 +13,7 @@ from .api import (
     process,
     read,
 )
+from .client import JSKOSClient
 
 __all__ = [
     "KOS",
@@ -20,6 +21,7 @@ __all__ = [
     "ConceptBundle",
     "ConceptScheme",
     "Item",
+    "JSKOSClient",
     "Mapping",
     "ProcessedConcept",
     "ProcessedKOS",
