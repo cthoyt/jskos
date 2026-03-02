@@ -149,9 +149,9 @@ class ResourceMixin(BaseModel):
     uri: AnyUrl | None = None
     identifier: list[AnyUrl] | None = None
     type: list[AnyUrl] | None = None
-    created: datetime.date | None = None
-    issued: datetime.date | None = None
-    modified: datetime.date | None = None
+    created: datetime.datetime | datetime.date | None = None
+    issued: datetime.datetime | datetime.date | None = None
+    modified: datetime.datetime | datetime.date | None = None
     creator: JSKOSSet | None = None
     contributor: JSKOSSet | None = None
     source: JSKOSSet | None = None
@@ -361,7 +361,7 @@ class ItemMixin(ResourceMixin):
     """An item, defined in https://gbv.github.io/jskos/#item."""
 
     notation: list[str] | None = None
-    preferred_label: LanguageMap | None = Field(None, serialization_alias="prefLabel")
+    preferred_label: LanguageMap | None = Field(None, alias="prefLabel")
     alternative_label: LanguageMapOfList | None = Field(None, serialization_alias="altLabel")
     hidden_label: LanguageMapOfList | None = Field(None, serialization_alias="hiddenLabel")
     scope_note: LanguageMapOfList | None = Field(None, serialization_alias="scopeNote")
@@ -582,15 +582,15 @@ class Distribution(ItemMixin, SemanticallyProcessable[ProcessedDistribution]):
     """A raw distribution in JSKOS, defined in https://gbv.github.io/jskos/#distribution."""
 
     download: AnyUrl
-    access_url: AnyUrl = Field(alias="accessURL")
-    format: AnyUrl
+    access_url: AnyUrl | None = Field(None, alias="accessURL")
+    format: AnyUrl | None = None
     mimetype: AnyUrl | str
-    compress_format: AnyUrl = Field(alias="compressFormat")
-    package_format: AnyUrl = Field(alias="packageFormat")
+    compress_format: AnyUrl | None = Field(None, alias="compressFormat")
+    package_format: AnyUrl | None = Field(None, alias="packageFormat")
     services: list[Service] | None = None
-    license: JSKOSSet
-    size: str
-    checksum: Checksum
+    license: JSKOSSet | None = None
+    size: str | None = None
+    checksum: Checksum | None = None
 
     def process(self, converter: Converter) -> ProcessedDistribution:
         """Process the distribution."""
@@ -606,7 +606,7 @@ class Distribution(ItemMixin, SemanticallyProcessable[ProcessedDistribution]):
             services=process_many(self.services, converter),
             license=_process_jskos_set(self.license, converter),
             size=self.size,
-            checksum=self.checksum.process(converter),
+            checksum=self.checksum.process(converter) if self.checksum is not None else None,
         )
 
 

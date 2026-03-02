@@ -52,6 +52,18 @@ kos = jskos.read(url)
 processed_kos = jskos.process(kos)
 ```
 
+A [JSKOS API](https://github.com/gbv/jskos-server) can be accessed with the
+following:
+
+```python
+from jskos import JSKOSClient
+
+client = JSKOSClient("https://coli-conc.gbv.de/api/")
+
+# see https://github.com/gbv/jskos-server#get-voc
+vocabularies = client.get_concept_schemes(limit=1)
+```
+
 ## 🚀 Installation
 
 The most recent release can be installed from
