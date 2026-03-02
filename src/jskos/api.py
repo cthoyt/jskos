@@ -149,9 +149,9 @@ class ResourceMixin(BaseModel):
     uri: AnyUrl | None = None
     identifier: list[AnyUrl] | None = None
     type: list[AnyUrl] | None = None
-    created: datetime.date | None = None
-    issued: datetime.date | None = None
-    modified: datetime.date | None = None
+    created: datetime.datetime | datetime.date | None = None
+    issued: datetime.datetime | datetime.date | None = None
+    modified: datetime.datetime | datetime.date | None = None
     creator: JSKOSSet | None = None
     contributor: JSKOSSet | None = None
     source: JSKOSSet | None = None
@@ -582,15 +582,15 @@ class Distribution(ItemMixin, SemanticallyProcessable[ProcessedDistribution]):
     """A raw distribution in JSKOS, defined in https://gbv.github.io/jskos/#distribution."""
 
     download: AnyUrl
-    access_url: AnyUrl = Field(alias="accessURL")
-    format: AnyUrl
+    access_url: AnyUrl | None = Field(None, alias="accessURL")
+    format: AnyUrl | None = None
     mimetype: AnyUrl | str
-    compress_format: AnyUrl = Field(alias="compressFormat")
-    package_format: AnyUrl = Field(alias="packageFormat")
+    compress_format: AnyUrl | None = Field(None, alias="compressFormat")
+    package_format: AnyUrl | None = Field(None, alias="packageFormat")
     services: list[Service] | None = None
-    license: JSKOSSet
-    size: str
-    checksum: Checksum
+    license: JSKOSSet | None = None
+    size: str | None = None
+    checksum: Checksum | None = None
 
     def process(self, converter: Converter) -> ProcessedDistribution:
         """Process the distribution."""
