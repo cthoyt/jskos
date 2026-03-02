@@ -2,28 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, TypeAlias
+from typing import Any, ClassVar, Literal
 
 import requests
-from pydantic import BaseModel
 
 from .api import ConceptScheme
 
 __all__ = [
     "JSKOSClient",
-    "Status",
-    "Validation",
 ]
-
-
-class Status(BaseModel):
-    """A status, see https://github.com/gbv/jskos-server#get-status."""
-
-    # TODO implement based on https://gbv.github.io/jskos-server/status.schema.json
-
-
-#:
-Validation: TypeAlias = list[bool]
 
 
 class JSKOSClient:
