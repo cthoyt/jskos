@@ -14,8 +14,17 @@ __all__ = [
 
 
 class JSKOSClient:
-    """A client to JSKOS API 2.1."""
+    """A client to JSKOS API 2.1.
 
+    .. seealso::
+
+        https://github.com/gbv/jskos-server
+    """
+
+    #: The concept scheme class used. Override this
+    #: if the JSKOS API extends the results. For example,
+    #: BARTOC adds the ``FORMAT`` field in addition to the
+    #: base fields.
     concept_scheme_cls: ClassVar[type[ConceptScheme]] = ConceptScheme
 
     def __init__(self, base: str) -> None:
@@ -46,8 +55,8 @@ class JSKOSClient:
     ) -> list[ConceptScheme]:
         """Get concept schemes, see https://github.com/gbv/jskos-server#get-voc.
 
-        If you want to get the NFDI4Objects Terminologies
-        collection from BARTOC (https://bartoc.org/en/node/18961), then do
+        To get the NFDI4Objects Terminologies collection from BARTOC
+        (https://bartoc.org/en/node/18961), do:
 
         .. code-block:: python
 
