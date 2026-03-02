@@ -52,7 +52,8 @@ kos = jskos.read(url)
 processed_kos = jskos.process(kos)
 ```
 
-A [JSKOS API](https://github.com/gbv/jskos-server) can be accessed with the following:
+A [JSKOS API](https://github.com/gbv/jskos-server) can be accessed with the
+following:
 
 ```python
 from jskos import JSKOSClient
