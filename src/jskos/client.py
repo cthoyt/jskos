@@ -88,14 +88,6 @@ class JSKOSClient:
         res = self._get("/voc", params=params)
         return [self.concept_scheme_cls.model_validate(record) for record in res.json()]
 
-    def _post(
-        self, end: str, params: dict[str, Any] | None = None, data: dict[str, Any] | None = None
-    ) -> requests.Response:
-        url = self.base + end
-        res = requests.post(url, timeout=10, params=params, data=data)
-        res.raise_for_status()
-        return res
-
 
 def _set(d: dict[str, Any], key: str, value: str | list[str] | None, sep: str = "|") -> None:
     if value is None:
