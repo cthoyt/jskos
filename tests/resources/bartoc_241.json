@@ -1,0 +1,295 @@
+{
+  "@context": "https://gbv.github.io/jskos/context.json",
+  "ACCESS": [
+    {
+      "uri": "http://bartoc.org/en/Access/Licensed"
+    },
+    {
+      "uri": "http://bartoc.org/en/Access/Free"
+    }
+  ],
+  "ADDRESS": {
+    "code": "43017",
+    "country": "United States",
+    "locality": "Dublin",
+    "region": "OH",
+    "street": "6565 Kilgour Place"
+  },
+  "API": [
+    {
+      "type": "http://bartoc.org/api-type/jskos",
+      "url": "https://coli-conc.gbv.de/api/"
+    },
+    {
+      "type": "http://bartoc.org/api-type/jskos",
+      "url": "https://bartoc.org/api/"
+    },
+    {
+      "type": "http://bartoc.org/api-type/skosmos",
+      "url": "https://data.ub.uio.no/skosmos/ddc/"
+    }
+  ],
+  "CQLKEY": "ddc",
+  "EXAMPLES": [
+    "612.112"
+  ],
+  "FORMAT": [
+    {
+      "uri": "http://bartoc.org/en/Format/CD-ROM"
+    },
+    {
+      "uri": "http://bartoc.org/en/Format/Floppy-Disc"
+    },
+    {
+      "uri": "http://bartoc.org/en/Format/Microform"
+    },
+    {
+      "uri": "http://bartoc.org/en/Format/Online"
+    },
+    {
+      "uri": "http://bartoc.org/en/Format/Printed"
+    }
+  ],
+  "MARCSPEC": "082|083",
+  "PICAPATH": "045F$a",
+  "contributor": [
+    {
+      "prefLabel": {
+        "en": "Sabrina Gaab"
+      },
+      "uri": "https://coli-conc.gbv.de/login/users/2062a0cd-5f05-400e-898a-124c0c96767c"
+    },
+    {
+      "prefLabel": {
+        "en": "David-Benjamin Rohrer"
+      },
+      "uri": "https://coli-conc.gbv.de/login/users/eccf8bf8-8194-4496-a9af-36f781688e6b"
+    },
+    {
+      "prefLabel": {
+        "en": "Ziyoung Park"
+      },
+      "uri": "https://coli-conc.gbv.de/login/users/e4529559-e50c-4395-9efe-2e5b86f6dbeb"
+    },
+    {
+      "prefLabel": {
+        "en": "JakobVoss"
+      },
+      "uri": "https://coli-conc.gbv.de/login/users/3a1bb23f-8d60-4b7a-8bec-cc419d7f6ab6"
+    },
+    {
+      "uri": "https://coli-conc.gbv.de/login/users/c0c1914a-f9d6-4b92-a624-bf44118b6619",
+      "prefLabel": {
+        "en": "Stefan Peters"
+      }
+    }
+  ],
+  "created": "2013-09-06T14:57:00Z",
+  "creator": [
+    {
+      "uri": "https://coli-conc.gbv.de/login/users/2062a0cd-5f05-400e-898a-124c0c96767c",
+      "prefLabel": {
+        "en": "Sabrina Gaab"
+      }
+    }
+  ],
+  "definition": {
+    "en": [
+      "\"The Dewey Decimal Classification (DDC) system, devised by library pioneer Melvil Dewey in the 1870s and owned by OCLC since 1988, provides a dynamic structure for the organization of library collections. Now in its 23rd edition, and available in print and Web versions, the DDC is the world's most widely used library classification system.\""
+    ]
+  },
+  "distributions": [
+    {
+      "download": "https://bartoc.org/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://bartoc.org/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "http://localhost:3012/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "http://localhost:3012/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://bartoc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://bartoc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=ndjson",
+      "format": "http://format.gbv.de/jskos",
+      "mimetype": "application/x-ndjson; charset=utf-8"
+    },
+    {
+      "download": "https://coli-conc.gbv.de/api/voc/concepts?uri=http%3A%2F%2Fbartoc.org%2Fen%2Fnode%2F241&download=json",
+      "mimetype": "application/json; charset=utf-8"
+    }
+  ],
+  "identifier": [
+    "http://www.wikidata.org/entity/Q48460",
+    "http://dewey.info/scheme/edition/e23/"
+  ],
+  "languages": [
+    "ar",
+    "nb",
+    "zh",
+    "fr",
+    "de",
+    "el",
+    "he",
+    "is",
+    "it",
+    "ru",
+    "es",
+    "sv",
+    "vi"
+  ],
+  "license": [
+    {
+      "uri": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+    },
+    {
+      "uri": "http://rightsstatements.org/vocab/InC/1.0/"
+    }
+  ],
+  "modified": "2025-11-25T07:53:26.015Z",
+  "notation": [
+    "DDC"
+  ],
+  "notationPattern": "(([0-9][0-9]?|[0-9]{3}(-[0-9]{3})?|[0-9]{3}(-[0-9]{3}(:[0-9]+)?)?|[0-9]{3}\\.[0-9]+(-[0-9]{3}\\.[0-9]+(:[0-9]+)?)?|T[1-9][A-Z]?--[0-9]+(-T[1-9][A-Z]?--[0-9]+(:[0-9]+)?)?|[1-9][A-Z]?--[0-9]+(-[1-9][A-Z]?--[0-9]+(:[0-9]+)?)?)?)",
+  "partOf": [
+    {
+      "uri": "http://bartoc.org/en/node/18926"
+    },
+    {
+      "uri": "http://bartoc.org/en/node/18930"
+    }
+  ],
+  "prefLabel": {
+    "de": "Dewey-Dezimalklassifikation",
+    "en": "Dewey Decimal Classification"
+  },
+  "publisher": [
+    {
+      "prefLabel": {
+        "en": "Online Computer Library Center (OCLC)"
+      },
+      "uri": "http://viaf.org/viaf/156508705"
+    }
+  ],
+  "startDate": "1876",
+  "subject": [
+    {
+      "uri": "http://dewey.info/class/0/e23/",
+      "inScheme": [
+        {
+          "uri": "http://bartoc.org/en/node/241"
+        }
+      ],
+      "notation": [
+        "0"
+      ]
+    },
+    {
+      "uri": "http://dewey.info/class/001/e23/",
+      "inScheme": [
+        {
+          "uri": "http://bartoc.org/en/node/241"
+        }
+      ],
+      "notation": [
+        "001"
+      ]
+    },
+    {
+      "uri": "http://dewey.info/class/025/e23/",
+      "inScheme": [
+        {
+          "uri": "http://bartoc.org/en/node/241"
+        }
+      ],
+      "notation": [
+        "025"
+      ]
+    },
+    {
+      "uri": "http://www.iskoi.org/ilc/2/class/V",
+      "inScheme": [
+        {
+          "uri": "http://www.iskoi.org/ilc/2/scheme"
+        }
+      ]
+    },
+    {
+      "uri": "http://www.iskoi.org/ilc/2/class/yvl",
+      "inScheme": [
+        {
+          "uri": "http://www.iskoi.org/ilc/2/scheme"
+        }
+      ]
+    }
+  ],
+  "type": [
+    "http://www.w3.org/2004/02/skos/core#ConceptScheme",
+    "http://w3id.org/nkos/nkostype#classification_schema"
+  ],
+  "uri": "http://bartoc.org/en/node/241",
+  "uriPattern": "http://dewey.info/class/(.+)/e23/",
+  "url": "http://www.oclc.org/dewey/"
+}

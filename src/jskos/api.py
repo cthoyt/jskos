@@ -45,6 +45,7 @@ __all__ = [
     "ProcessedResource",
     "ProcessedService",
     "Resource",
+    "pop_bartoc_extras",
     "process",
     "read",
 ]
@@ -946,3 +947,12 @@ def _parse_optional_url(url: str | AnyUrl | None, converter: Converter) -> Refer
     if url is None:
         return None
     return _parse_url(url, converter)
+
+
+def pop_bartoc_extras(record: dict[str, Any]) -> dict[str, Any]:
+    """Pop off BARTOC-specific content that isn't part of the JSKOS schema for Concept Schemes."""
+    return {
+        key: value
+        for key in ["ACCESS", "API", "FORMAT", "ADDRESS", "CQLKEYMARCSPEC", "PICAPATH", "EXAMPLES"]
+        if (value := record.pop(key, None))
+    }
