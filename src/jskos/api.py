@@ -655,12 +655,9 @@ class ProcessedConceptScheme(ProcessedDataset):
     uri_pattern: str | None = None
     notation_pattern: str | None = None
     notation_examples: list[str] | None = None
-    # concepts
-    # types
-    # distributions
-    # extent
-    # languages
-    # license
+    concepts: list[ProcessedConcept] | None = Field(None)
+    types: list[ProcessedConcept] | None = Field(None)
+    languages: list[LanguageCode] | None = Field(None)
 
 
 class ConceptScheme(DatasetMixin, SemanticallyProcessable[ProcessedConceptScheme]):
@@ -668,18 +665,14 @@ class ConceptScheme(DatasetMixin, SemanticallyProcessable[ProcessedConceptScheme
 
     model_config = {"populate_by_name": True}
 
-    top_concepts: list[Concept] | None = Field(None, alias="from")
+    top_concepts: list[Concept] | None = Field(None, alias="topConcepts")
     namespace: AnyUrl | None = None
     uri_pattern: str | None = Field(None, alias="uriPattern")
     notation_pattern: str | None = Field(None, alias="notationPattern")
     notation_examples: list[str] | None = Field(None, alias="notationExamples")
-
-    # concepts
-    # types
-    # distributions
-    # extent
-    # languages
-    # license
+    concepts: list[Concept] | None = Field(None)
+    types: list[Concept] | None = Field(None)
+    languages: list[LanguageCode] | None = Field(None)
 
     def process(self, converter: curies.Converter) -> ProcessedConceptScheme:
         """Process the concept scheme."""
@@ -692,12 +685,9 @@ class ConceptScheme(DatasetMixin, SemanticallyProcessable[ProcessedConceptScheme
             uri_pattern=self.uri_pattern,
             notation_pattern=self.notation_pattern,
             notation_examples=self.notation_examples,
-            # concepts
-            # types
-            # distributions
-            # extent
-            # languages
-            # license
+            concepts=process_many(self.concepts, converter),
+            types=process_many(self.types, converter),
+            languages=self.languages,
         )
 
 
