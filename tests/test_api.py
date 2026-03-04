@@ -1,12 +1,26 @@
 """Test the API."""
 
+import json
 import unittest
+from pathlib import Path
 
 import curies
 from curies import Reference
 
 import jskos
-from jskos.api import Concept, Location, Occurrence, Registry, Resource
+from jskos.api import (
+    Concept,
+    ConceptScheme,
+    Location,
+    Occurrence,
+    Registry,
+    Resource,
+    pop_bartoc_extras,
+)
+
+HERE = Path(__file__).parent.resolve()
+RESOURCES = HERE / "resources"
+BARTOC_241_PATH = RESOURCES.joinpath("bartoc_241.json")
 
 converter = curies.Converter.from_prefix_map(
     {
@@ -150,6 +164,12 @@ class TestExamples(unittest.TestCase):
         self.assertEqual(
             Reference(prefix="wikidata", identifier="Q406"), processed_concept.reference
         )
+
+    def test_bartoc_241_dewey_decimal(self) -> None:
+        """Test parsing the BARTOC record 241 for Dewey Decimal Classification."""
+        record = json.loads(BARTOC_241_PATH.read_text())
+        _bartoc_extras = pop_bartoc_extras(record)
+        ConceptScheme.model_validate(record, extra="forbid")
 
 
 class TestJSKOS(unittest.TestCase):
